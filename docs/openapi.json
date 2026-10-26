@@ -1,0 +1,2050 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CineMatch API",
+    "description": "Production Movie Recommendation API with transparent multi-signal ranking.",
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Health check endpoint reporting artifact readiness and dataset fingerprint.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Check Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/search": {
+      "get": {
+        "summary": "Search Movies",
+        "description": "Typo-tolerant, article-aware movie search with character highlight offsets.",
+        "operationId": "search_movies_api_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Movie search query",
+              "title": "Q"
+            },
+            "description": "Movie search query"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/similar": {
+      "get": {
+        "summary": "Get Similar Movies",
+        "description": "O(1) precomputed array similarity lookup combining content cosine and Item-kNN co-ratings.",
+        "operationId": "get_similar_movies_api_similar_get",
+        "parameters": [
+          {
+            "name": "movieId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "Target seed movieId",
+              "title": "Movieid"
+            },
+            "description": "Target seed movieId"
+          },
+          {
+            "name": "top_n",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Top N"
+            }
+          },
+          {
+            "name": "genres",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated genre filters",
+              "title": "Genres"
+            },
+            "description": "Comma-separated genre filters"
+          },
+          {
+            "name": "genre_mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "'OR' or 'AND'",
+              "default": "OR",
+              "title": "Genre Mode"
+            },
+            "description": "'OR' or 'AND'"
+          },
+          {
+            "name": "year_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2030,
+                  "minimum": 1880
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year Min"
+            }
+          },
+          {
+            "name": "year_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2030,
+                  "minimum": 1880
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year Max"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimilarMoviesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recommendations": {
+      "post": {
+        "summary": "Get Recommendations",
+        "description": "Personalized hybrid recommendations using ALS fold-in, kNN, taste vector, and learned blend.",
+        "operationId": "get_recommendations_api_recommendations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meta/demo-profiles": {
+      "get": {
+        "summary": "Get Demo Profiles",
+        "description": "Returns dynamic demo user profiles computed directly from MovieLens training data.",
+        "operationId": "get_demo_profiles_api_meta_demo_profiles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DemoProfile"
+                  },
+                  "type": "array",
+                  "title": "Response Get Demo Profiles Api Meta Demo Profiles Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/meta/model": {
+      "get": {
+        "summary": "Get Model Metadata",
+        "description": "Reports live model serving configuration, fingerprint, and quality gate outcome.",
+        "operationId": "get_model_metadata_api_meta_model_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelMetaResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "post": {
+        "summary": "Get Or Create User",
+        "description": "Create a new user or get existing user by ID.",
+        "operationId": "get_or_create_user_api_users_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/UserCreate"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{user_id}": {
+      "get": {
+        "summary": "Get User Profile",
+        "description": "Get user profile and active stats.",
+        "operationId": "get_user_profile_api_users__user_id__get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/demo/{demo_user_id}/load/{user_id}": {
+      "post": {
+        "summary": "Load Demo Ratings Into User",
+        "description": "Loads a demo user's real MovieLens ratings into the active user session.",
+        "operationId": "load_demo_ratings_into_user_api_users_demo__demo_user_id__load__user_id__post",
+        "parameters": [
+          {
+            "name": "demo_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Demo User Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Load Demo Ratings Into User Api Users Demo  Demo User Id  Load  User Id  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{user_id}/ratings": {
+      "get": {
+        "summary": "Get User Ratings",
+        "description": "Retrieve all ratings submitted by a user with catalog metadata.",
+        "operationId": "get_user_ratings_api_users__user_id__ratings_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RatingItem"
+                  },
+                  "title": "Response Get User Ratings Api Users  User Id  Ratings Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit Rating",
+        "description": "Add or update a movie rating for a user.",
+        "operationId": "submit_rating_api_users__user_id__ratings_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{user_id}/ratings/{movie_id}": {
+      "delete": {
+        "summary": "Delete Rating",
+        "description": "Delete a user rating.",
+        "operationId": "delete_rating_api_users__user_id__ratings__movie_id__delete",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "movie_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Movie Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{user_id}/watchlist": {
+      "get": {
+        "summary": "Get User Watchlist",
+        "description": "Retrieve all movies on a user's watchlist.",
+        "operationId": "get_user_watchlist_api_users__user_id__watchlist_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WatchlistItem"
+                  },
+                  "title": "Response Get User Watchlist Api Users  User Id  Watchlist Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add To Watchlist",
+        "description": "Add a movie to user's watchlist.",
+        "operationId": "add_to_watchlist_api_users__user_id__watchlist_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{user_id}/watchlist/{movie_id}": {
+      "delete": {
+        "summary": "Remove From Watchlist",
+        "description": "Remove a movie from user's watchlist.",
+        "operationId": "remove_from_watchlist_api_users__user_id__watchlist__movie_id__delete",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "movie_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Movie Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{user_id}/watchlist/export": {
+      "get": {
+        "summary": "Export Watchlist Csv",
+        "description": "Export user's watchlist as a downloadable CSV.",
+        "operationId": "export_watchlist_csv_api_users__user_id__watchlist_export_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{user_id}/feedback": {
+      "post": {
+        "summary": "Track Feedback",
+        "description": "Record user interaction feedback for model audit.",
+        "operationId": "track_feedback_api_users__user_id__feedback_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{user_id}/recommendations": {
+      "get": {
+        "summary": "Get User Personalized Recommendations",
+        "description": "Personalized recommendations using persistent ratings loaded from SQLite.",
+        "operationId": "get_user_personalized_recommendations_api_users__user_id__recommendations_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "top_n",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Top N"
+            }
+          },
+          {
+            "name": "genres",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Genres"
+            }
+          },
+          {
+            "name": "genre_mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "OR",
+              "title": "Genre Mode"
+            }
+          },
+          {
+            "name": "year_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year Min"
+            }
+          },
+          {
+            "name": "year_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year Max"
+            }
+          },
+          {
+            "name": "min_support",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 5,
+              "title": "Min Support"
+            }
+          },
+          {
+            "name": "diversity_lambda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0.15,
+              "title": "Diversity Lambda"
+            }
+          },
+          {
+            "name": "novelty_boost",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0.05,
+              "title": "Novelty Boost"
+            }
+          },
+          {
+            "name": "recency_prior",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0.0,
+              "title": "Recency Prior"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/media/movie/{movie_id}": {
+      "get": {
+        "summary": "Get Movie Media Details",
+        "description": "Fetches media details (posters, trailers, providers) by MovieLens movieId.",
+        "operationId": "get_movie_media_details_api_media_movie__movie_id__get",
+        "parameters": [
+          {
+            "name": "movie_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Movie Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/media/tmdb/{tmdb_id}": {
+      "get": {
+        "summary": "Get Media By Tmdb Id",
+        "description": "Fetches media details directly by TMDB ID.",
+        "operationId": "get_media_by_tmdb_id_api_media_tmdb__tmdb_id__get",
+        "parameters": [
+          {
+            "name": "tmdb_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tmdb Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CastMember": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "character": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CastMember"
+      },
+      "DemoProfile": {
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "title": "Userid"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "rating_count": {
+            "type": "integer",
+            "title": "Rating Count"
+          },
+          "top_genres": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top Genres"
+          },
+          "top_decade": {
+            "type": "string",
+            "title": "Top Decade"
+          },
+          "avg_rating": {
+            "type": "number",
+            "title": "Avg Rating"
+          },
+          "ratings": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Ratings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "userId",
+          "label",
+          "rating_count",
+          "top_genres",
+          "top_decade",
+          "avg_rating",
+          "ratings"
+        ],
+        "title": "DemoProfile"
+      },
+      "FeedbackCreate": {
+        "properties": {
+          "movieId": {
+            "type": "integer",
+            "title": "Movieid"
+          },
+          "interaction_type": {
+            "type": "string",
+            "pattern": "^(click|like|dislike|dismiss)$",
+            "title": "Interaction Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "movieId",
+          "interaction_type"
+        ],
+        "title": "FeedbackCreate"
+      },
+      "FeedbackResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "message"
+        ],
+        "title": "FeedbackResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "MediaDetails": {
+        "properties": {
+          "tmdb_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmdb Id"
+          },
+          "movieId": {
+            "type": "integer",
+            "title": "Movieid"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Url"
+          },
+          "backdrop_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backdrop Url"
+          },
+          "overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overview"
+          },
+          "cast": {
+            "items": {
+              "$ref": "#/components/schemas/CastMember"
+            },
+            "type": "array",
+            "title": "Cast"
+          },
+          "director": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Director"
+          },
+          "trailer_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailer Key"
+          },
+          "streaming_providers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Streaming Providers"
+          },
+          "runtime": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime"
+          },
+          "vote_average": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vote Average"
+          },
+          "fallback_accent": {
+            "type": "string",
+            "title": "Fallback Accent",
+            "default": "#f59e0b"
+          }
+        },
+        "type": "object",
+        "required": [
+          "movieId",
+          "title"
+        ],
+        "title": "MediaDetails"
+      },
+      "ModelMetaResponse": {
+        "properties": {
+          "dataset_fingerprint": {
+            "type": "string",
+            "title": "Dataset Fingerprint"
+          },
+          "catalog_size": {
+            "type": "integer",
+            "title": "Catalog Size"
+          },
+          "clean_ratings_count": {
+            "type": "integer",
+            "title": "Clean Ratings Count"
+          },
+          "clean_users_count": {
+            "type": "integer",
+            "title": "Clean Users Count"
+          },
+          "sparsity_percentage": {
+            "type": "number",
+            "title": "Sparsity Percentage"
+          },
+          "als_factors": {
+            "type": "integer",
+            "title": "Als Factors"
+          },
+          "blend_coefficients": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Blend Coefficients"
+          },
+          "quality_gate_selected_model": {
+            "type": "string",
+            "title": "Quality Gate Selected Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_fingerprint",
+          "catalog_size",
+          "clean_ratings_count",
+          "clean_users_count",
+          "sparsity_percentage",
+          "als_factors",
+          "blend_coefficients",
+          "quality_gate_selected_model"
+        ],
+        "title": "ModelMetaResponse"
+      },
+      "MovieCard": {
+        "properties": {
+          "movieId": {
+            "type": "integer",
+            "title": "Movieid"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "display_title": {
+            "type": "string",
+            "title": "Display Title"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "genres": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Genres"
+          },
+          "vote_count": {
+            "type": "integer",
+            "title": "Vote Count",
+            "default": 0
+          },
+          "vote_average": {
+            "type": "number",
+            "title": "Vote Average",
+            "default": 0.0
+          },
+          "weighted_rating": {
+            "type": "number",
+            "title": "Weighted Rating",
+            "default": 0.0
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "Normalized score in [0.0, 1.0]",
+            "default": 0.0
+          },
+          "predicted_rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicted Rating"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/SignalExplanation"
+            },
+            "type": "array",
+            "title": "Signals"
+          },
+          "contributions": {
+            "$ref": "#/components/schemas/SignalContributions"
+          },
+          "imdbId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imdbid"
+          },
+          "tmdbId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmdbid"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "movieId",
+          "title",
+          "display_title"
+        ],
+        "title": "MovieCard"
+      },
+      "RatingCreate": {
+        "properties": {
+          "movieId": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Movieid"
+          },
+          "rating": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 0.5,
+            "title": "Rating"
+          }
+        },
+        "type": "object",
+        "required": [
+          "movieId",
+          "rating"
+        ],
+        "title": "RatingCreate"
+      },
+      "RatingItem": {
+        "properties": {
+          "movieId": {
+            "type": "integer",
+            "title": "Movieid"
+          },
+          "rating": {
+            "type": "number",
+            "title": "Rating"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "display_title": {
+            "type": "string",
+            "title": "Display Title"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "genres": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Genres"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "movieId",
+          "rating",
+          "title",
+          "display_title",
+          "created_at"
+        ],
+        "title": "RatingItem"
+      },
+      "RecommendationRequest": {
+        "properties": {
+          "user_ratings": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "User Ratings",
+            "description": "Map of {movieId: rating}"
+          },
+          "top_n": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Top N",
+            "default": 20
+          },
+          "genres": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genres"
+          },
+          "genre_mode": {
+            "type": "string",
+            "title": "Genre Mode",
+            "description": "'OR' or 'AND'",
+            "default": "OR"
+          },
+          "year_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Min"
+          },
+          "year_max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Max"
+          },
+          "min_support": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Min Support",
+            "description": "Minimum rating count support (lower for hidden gems)",
+            "default": 5
+          },
+          "diversity_lambda": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Diversity Lambda",
+            "default": 0.15
+          },
+          "novelty_boost": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Novelty Boost",
+            "default": 0.05
+          },
+          "recency_prior": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Recency Prior",
+            "default": 0.0
+          },
+          "signal_mix": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signal Mix"
+          }
+        },
+        "type": "object",
+        "title": "RecommendationRequest"
+      },
+      "RecommendationResponse": {
+        "properties": {
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/MovieCard"
+            },
+            "type": "array",
+            "title": "Recommendations"
+          },
+          "total_candidates": {
+            "type": "integer",
+            "title": "Total Candidates"
+          },
+          "cold_start_tier": {
+            "type": "string",
+            "title": "Cold Start Tier",
+            "description": "'zero_ratings', 'content_fallback', or 'full_pipeline'"
+          },
+          "explanation_summary": {
+            "type": "string",
+            "title": "Explanation Summary"
+          },
+          "active_filters": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Active Filters"
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recommendations",
+          "total_candidates",
+          "cold_start_tier",
+          "explanation_summary",
+          "active_filters",
+          "latency_ms"
+        ],
+        "title": "RecommendationResponse"
+      },
+      "SearchResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "results",
+          "latency_ms"
+        ],
+        "title": "SearchResponse"
+      },
+      "SearchResult": {
+        "properties": {
+          "movieId": {
+            "type": "integer",
+            "title": "Movieid"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "display_title": {
+            "type": "string",
+            "title": "Display Title"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "genres": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Genres"
+          },
+          "vote_count": {
+            "type": "integer",
+            "title": "Vote Count"
+          },
+          "vote_average": {
+            "type": "number",
+            "title": "Vote Average"
+          },
+          "weighted_rating": {
+            "type": "number",
+            "title": "Weighted Rating"
+          },
+          "imdbId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imdbid"
+          },
+          "tmdbId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmdbid"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "match_offsets": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Match Offsets",
+            "description": "[start, end] char indices for highlighting"
+          }
+        },
+        "type": "object",
+        "required": [
+          "movieId",
+          "title",
+          "display_title",
+          "genres",
+          "vote_count",
+          "vote_average",
+          "weighted_rating",
+          "score"
+        ],
+        "title": "SearchResult"
+      },
+      "SignalContributions": {
+        "properties": {
+          "mf": {
+            "type": "number",
+            "title": "Mf",
+            "default": 0.0
+          },
+          "knn": {
+            "type": "number",
+            "title": "Knn",
+            "default": 0.0
+          },
+          "content": {
+            "type": "number",
+            "title": "Content",
+            "default": 0.0
+          },
+          "popularity": {
+            "type": "number",
+            "title": "Popularity",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "title": "SignalContributions"
+      },
+      "SignalExplanation": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Type of signal evidence: 'neighbor', 'genre', 'tags', 'cf', 'popularity'"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details",
+            "description": "Raw computed facts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "SignalExplanation"
+      },
+      "SimilarMoviesResponse": {
+        "properties": {
+          "seed_movie": {
+            "$ref": "#/components/schemas/MovieCard"
+          },
+          "similar_movies": {
+            "items": {
+              "$ref": "#/components/schemas/MovieCard"
+            },
+            "type": "array",
+            "title": "Similar Movies"
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "seed_movie",
+          "similar_movies",
+          "latency_ms"
+        ],
+        "title": "SimilarMoviesResponse"
+      },
+      "UserCreate": {
+        "properties": {
+          "username": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "type": "object",
+        "title": "UserCreate"
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "rating_count": {
+            "type": "integer",
+            "title": "Rating Count",
+            "default": 0
+          },
+          "watchlist_count": {
+            "type": "integer",
+            "title": "Watchlist Count",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "created_at"
+        ],
+        "title": "UserResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WatchlistCreate": {
+        "properties": {
+          "movieId": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Movieid"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "movieId"
+        ],
+        "title": "WatchlistCreate"
+      },
+      "WatchlistItem": {
+        "properties": {
+          "movieId": {
+            "type": "integer",
+            "title": "Movieid"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "display_title": {
+            "type": "string",
+            "title": "Display Title"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "genres": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Genres"
+          },
+          "vote_average": {
+            "type": "number",
+            "title": "Vote Average",
+            "default": 0.0
+          },
+          "vote_count": {
+            "type": "integer",
+            "title": "Vote Count",
+            "default": 0
+          },
+          "added_at": {
+            "type": "string",
+            "title": "Added At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "movieId",
+          "title",
+          "display_title",
+          "added_at"
+        ],
+        "title": "WatchlistItem"
+      }
+    }
+  }
+}

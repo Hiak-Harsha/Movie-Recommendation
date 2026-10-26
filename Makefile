@@ -1,7 +1,7 @@
-.PHONY: test bench artifacts eval report api
+.PHONY: test bench artifacts eval report api web build-web
 
 test:
-	python -m pytest -v -q
+	python -m pytest -q
 
 bench:
 	python bench.py
@@ -16,4 +16,10 @@ report:
 	python -m ml.report
 
 api:
-	uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload
+	python -m uvicorn apps.api.main:app --host 127.0.0.1 --port 8000
+
+web:
+	cd apps/web && npm run dev
+
+build-web:
+	cd apps/web && npm run build

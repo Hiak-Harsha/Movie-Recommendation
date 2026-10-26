@@ -1,0 +1,17 @@
+{
+  "name": "@cinematch/api-client",
+  "version": "2.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "npx -p typescript tsc",
+    "generate": "npx -y openapi-typescript ../../docs/openapi.json -o ./src/schema.d.ts"
+  }
+}
