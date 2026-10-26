@@ -38,6 +38,14 @@ st.markdown(STUDIO_CSS, unsafe_allow_html=True)
 # Initialize Session State
 init_session_state()
 
+# Notice for CineMatch v2 Migration
+st.info(
+    "🎬 **CineMatch v2 is running at [http://localhost:3000](http://localhost:3000)**\n\n"
+    "Per Section 1 Defect D1, the frontend has been upgraded from Streamlit to a full-stack "
+    "**Next.js 16 + Tailwind + GSAP** web studio backed by **FastAPI** (`http://localhost:8000`).\n\n"
+    "👉 **Please switch to [http://localhost:3000](http://localhost:3000) in your browser!**"
+)
+
 
 @st.cache_resource(show_spinner="Initializing CineMatch Studio Workspace...")
 def initialize_system(data_fingerprint: str):
