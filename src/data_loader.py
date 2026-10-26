@@ -1,9 +1,10 @@
 """
 CineMatch Data Loader
 Handles data ingestion, file resolution, schema validation, type casting,
-and data health verification for the MovieLens dataset.
+deduplication, dataset fingerprinting, and health verification for the MovieLens dataset.
 """
 from dataclasses import dataclass, field
+import hashlib
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Any
@@ -34,6 +35,8 @@ class DataHealthReport:
     missing_values: Dict[str, Dict[str, int]] = field(default_factory=dict)
     duplicate_rows: Dict[str, int] = field(default_factory=dict)
     
+    dropped_ratings_invalid_score: int = 0
+    dropped_ratings_duplicate_user_movie: int = 0
     orphan_ratings_count: int = 0
     orphan_tags_count: int = 0
     unrated_movies_count: int = 0
@@ -42,13 +45,19 @@ class DataHealthReport:
     duplicate_titles_count: int = 0
     
     rating_range: Tuple[float, float] = (0.0, 0.0)
+    rating_timestamp_range: Tuple[int, int] = (0, 0)
+    tag_timestamp_range: Tuple[int, int] = (0, 0)
+    sparsity_percentage: float = 0.0
+    
     data_directory: str = ""
+    dataset_fingerprint: str = ""
     issues_detected: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert health report to dictionary for UI and logging."""
         return {
             "data_directory": self.data_directory,
+            "dataset_fingerprint": self.dataset_fingerprint,
             "raw_counts": {
                 "movies": self.raw_movie_count,
                 "ratings": self.raw_rating_count,
@@ -61,16 +70,38 @@ class DataHealthReport:
                 "valid_tags": self.clean_tag_count,
                 "unique_users": self.clean_user_count,
             },
+            "dropped_ratings": {
+                "invalid_score": self.dropped_ratings_invalid_score,
+                "duplicate_user_movie": self.dropped_ratings_duplicate_user_movie,
+                "orphan_movie_id": self.orphan_ratings_count,
+            },
             "unrated_movies": self.unrated_movies_count,
-            "orphan_ratings": self.orphan_ratings_count,
             "orphan_tags": self.orphan_tags_count,
             "no_genres_count": self.no_genres_count,
             "duplicate_titles_count": self.duplicate_titles_count,
             "rating_range": self.rating_range,
+            "rating_timestamp_range": self.rating_timestamp_range,
+            "tag_timestamp_range": self.tag_timestamp_range,
+            "sparsity_percentage": self.sparsity_percentage,
             "missing_values": self.missing_values,
             "duplicates": self.duplicate_rows,
             "issues": self.issues_detected,
         }
+
+
+def compute_dataset_fingerprint(data_dir: Path) -> str:
+    """
+    Computes a cryptographic fingerprint of the dataset based on filenames,
+    file sizes, mtimes, and line counts. Used for robust cache invalidation.
+    """
+    hasher = hashlib.sha256()
+    for fname in sorted([config.MOVIES_FILENAME, config.RATINGS_FILENAME, config.TAGS_FILENAME, config.LINKS_FILENAME]):
+        fpath = data_dir / fname
+        if fpath.exists():
+            stat = fpath.stat()
+            meta_str = f"{fname}:{stat.st_size}:{stat.st_mtime}"
+            hasher.update(meta_str.encode("utf-8"))
+    return hasher.hexdigest()[:16]
 
 
 def resolve_data_directory(custom_path: Optional[str | Path] = None) -> Path:
@@ -125,7 +156,7 @@ def load_raw_data(data_dir: Optional[str | Path] = None) -> Tuple[pd.DataFrame, 
     # Read ratings
     ratings_df = pd.read_csv(ratings_path, encoding="utf-8")
 
-    # Read tags (optional but expected)
+    # Read tags
     if tags_path.exists():
         try:
             tags_df = pd.read_csv(tags_path, encoding="utf-8")
@@ -134,7 +165,7 @@ def load_raw_data(data_dir: Optional[str | Path] = None) -> Tuple[pd.DataFrame, 
     else:
         tags_df = pd.DataFrame(columns=["userId", "movieId", "tag", "timestamp"])
 
-    # Read links (optional)
+    # Read links
     links_df = None
     if links_path.exists():
         links_df = pd.read_csv(links_path)
@@ -142,18 +173,18 @@ def load_raw_data(data_dir: Optional[str | Path] = None) -> Tuple[pd.DataFrame, 
     # Validate Schema
     required_movie_cols = {"movieId", "title", "genres"}
     if not required_movie_cols.issubset(set(movies_df.columns)):
-        missing = required_movie_cols - set(movies_df.columns)
+        missing = sorted(list(required_movie_cols - set(movies_df.columns)))
         raise DataValidationError(f"'{config.MOVIES_FILENAME}' is missing required columns: {missing}")
 
     required_rating_cols = {"userId", "movieId", "rating", "timestamp"}
     if not required_rating_cols.issubset(set(ratings_df.columns)):
-        missing = required_rating_cols - set(ratings_df.columns)
+        missing = sorted(list(required_rating_cols - set(ratings_df.columns)))
         raise DataValidationError(f"'{config.RATINGS_FILENAME}' is missing required columns: {missing}")
 
     if not tags_df.empty:
         required_tag_cols = {"userId", "movieId", "tag", "timestamp"}
         if not required_tag_cols.issubset(set(tags_df.columns)):
-            missing = required_tag_cols - set(tags_df.columns)
+            missing = sorted(list(required_tag_cols - set(tags_df.columns)))
             raise DataValidationError(f"'{config.TAGS_FILENAME}' is missing required columns: {missing}")
 
     return movies_df, ratings_df, tags_df, links_df, resolved_dir
@@ -171,11 +202,14 @@ def validate_and_clean_data(
     - Removes duplicate rows
     - Validates data types and ranges
     - Handles missing values without inventing attributes
-    - Verifies ID integrity between ratings/tags and movies
+    - Enforces ID integrity between ratings/tags and movies
     - Records an exhaustive DataHealthReport
     """
     report = DataHealthReport()
     report.data_directory = str(data_dir_path)
+    if data_dir_path and Path(data_dir_path).exists():
+        report.dataset_fingerprint = compute_dataset_fingerprint(Path(data_dir_path))
+
     report.raw_movie_count = len(movies_raw)
     report.raw_rating_count = len(ratings_raw)
     report.raw_tag_count = len(tags_raw)
@@ -193,26 +227,21 @@ def validate_and_clean_data(
     report.duplicate_rows["ratings_exact"] = int(ratings_raw.duplicated().sum())
     report.duplicate_rows["tags_exact"] = int(tags_raw.duplicated().sum())
 
-    # Check duplicate (userId, movieId) in ratings
-    dup_ratings_user_movie = int(ratings_raw.duplicated(subset=["userId", "movieId"]).sum())
-    report.duplicate_rows["ratings_duplicate_user_movie"] = dup_ratings_user_movie
-
     # --- CLEAN MOVIES ---
     movies_clean = movies_raw.copy()
-    # Drop rows missing movieId or title
     movies_clean = movies_clean.dropna(subset=["movieId", "title"])
-    # Cast movieId to int
     movies_clean["movieId"] = pd.to_numeric(movies_clean["movieId"], errors="coerce")
     movies_clean = movies_clean.dropna(subset=["movieId"])
     movies_clean["movieId"] = movies_clean["movieId"].astype(np.int64)
     # Deduplicate on movieId keeping first
-    movies_clean = movies_clean.drop_duplicates(subset=["movieId"])
+    movies_clean = movies_clean.drop_duplicates(subset=["movieId"], keep="first")
     
-    # Handle missing genres: replace NaN with empty string
+    # Preserve original title untouched, clean genres
     movies_clean["genres"] = movies_clean["genres"].fillna("").astype(str).str.strip()
-    report.no_genres_count = int((movies_clean["genres"] == "(no genres listed)").sum() + (movies_clean["genres"] == "").sum())
+    report.no_genres_count = int(
+        (movies_clean["genres"] == "(no genres listed)").sum() + (movies_clean["genres"] == "").sum()
+    )
 
-    # Count duplicate titles (different movieIds with same title)
     report.duplicate_titles_count = int(movies_clean.duplicated(subset=["title"]).sum())
     if report.duplicate_titles_count > 0:
         report.issues_detected.append(
@@ -232,9 +261,8 @@ def validate_and_clean_data(
     
     ratings_clean["userId"] = ratings_clean["userId"].astype(np.int64)
     ratings_clean["movieId"] = ratings_clean["movieId"].astype(np.int64)
-    ratings_clean["rating"] = ratings_clean["rating"].astype(np.float64)
+    ratings_clean["rating"] = ratings_clean["rating"].astype(np.float32)
 
-    # Cast timestamp if present
     if "timestamp" in ratings_clean.columns:
         ratings_clean["timestamp"] = pd.to_numeric(ratings_clean["timestamp"], errors="coerce").fillna(0).astype(np.int64)
     else:
@@ -242,17 +270,20 @@ def validate_and_clean_data(
 
     # Filter rating score range (0.5 to 5.0)
     valid_rating_mask = (ratings_clean["rating"] >= 0.5) & (ratings_clean["rating"] <= 5.0)
-    invalid_ratings_count = int((~valid_rating_mask).sum())
-    if invalid_ratings_count > 0:
-        report.issues_detected.append(f"Dropped {invalid_ratings_count} ratings outside [0.5, 5.0] range.")
+    report.dropped_ratings_invalid_score = int((~valid_rating_mask).sum())
+    if report.dropped_ratings_invalid_score > 0:
+        report.issues_detected.append(f"Dropped {report.dropped_ratings_invalid_score} ratings outside [0.5, 5.0] range.")
         ratings_clean = ratings_clean[valid_rating_mask]
 
-    # Deduplicate (userId, movieId), keeping the latest timestamp rating if duplicates exist
+    # Deduplicate (userId, movieId), keeping latest timestamp
+    dup_ratings_user_movie = int(ratings_clean.duplicated(subset=["userId", "movieId"]).sum())
+    report.duplicate_rows["ratings_duplicate_user_movie"] = dup_ratings_user_movie
     if dup_ratings_user_movie > 0:
-        report.issues_detected.append(f"Deduplicating {dup_ratings_user_movie} duplicate (userId, movieId) rating records.")
+        report.dropped_ratings_duplicate_user_movie = dup_ratings_user_movie
+        report.issues_detected.append(f"Deduplicated {dup_ratings_user_movie} duplicate (userId, movieId) rating records, keeping latest timestamp.")
         ratings_clean = ratings_clean.sort_values(by="timestamp").drop_duplicates(subset=["userId", "movieId"], keep="last")
 
-    # Check for orphan ratings (referencing non-existent movieId)
+    # Check for orphan ratings (referencing unknown movieId)
     orphan_ratings = ratings_clean[~ratings_clean["movieId"].isin(valid_movie_ids)]
     report.orphan_ratings_count = len(orphan_ratings)
     if report.orphan_ratings_count > 0:
@@ -265,13 +296,12 @@ def validate_and_clean_data(
     rated_movie_ids = set(ratings_clean["movieId"].unique())
     report.unrated_movies_count = len(valid_movie_ids - rated_movie_ids)
     if report.unrated_movies_count > 0:
-        report.issues_detected.append(
-            f"{report.unrated_movies_count} movies have zero ratings in ratings.csv."
-        )
+        report.issues_detected.append(f"{report.unrated_movies_count} movies have zero ratings in ratings.csv.")
 
-    # Rating statistics
+    # Rating stats
     if not ratings_clean.empty:
         report.rating_range = (float(ratings_clean["rating"].min()), float(ratings_clean["rating"].max()))
+        report.rating_timestamp_range = (int(ratings_clean["timestamp"].min()), int(ratings_clean["timestamp"].max()))
 
     # --- CLEAN TAGS ---
     tags_clean = tags_raw.copy()
@@ -279,12 +309,16 @@ def validate_and_clean_data(
         tags_clean = tags_clean.dropna(subset=["userId", "movieId", "tag"])
         tags_clean["userId"] = pd.to_numeric(tags_clean["userId"], errors="coerce").dropna().astype(np.int64)
         tags_clean["movieId"] = pd.to_numeric(tags_clean["movieId"], errors="coerce").dropna().astype(np.int64)
-        tags_clean["tag"] = tags_clean["tag"].astype(str).str.strip()
-        tags_clean = tags_clean[tags_clean["tag"] != ""]
+        tags_clean["tag"] = tags_clean["tag"].astype(str).str.strip().str.lower()
+        tags_clean = tags_clean[~tags_clean["tag"].isin(["nan", "none", "null", ""])]
+        
         if "timestamp" in tags_clean.columns:
             tags_clean["timestamp"] = pd.to_numeric(tags_clean["timestamp"], errors="coerce").fillna(0).astype(np.int64)
         else:
             tags_clean["timestamp"] = 0
+
+        # Deduplicate per (userId, movieId, tag)
+        tags_clean = tags_clean.drop_duplicates(subset=["userId", "movieId", "tag"])
 
         # Filter orphan tags
         orphan_tags = tags_clean[~tags_clean["movieId"].isin(valid_movie_ids)]
@@ -292,6 +326,13 @@ def validate_and_clean_data(
         if report.orphan_tags_count > 0:
             report.issues_detected.append(f"Dropped {report.orphan_tags_count} tags referencing unknown movie IDs.")
             tags_clean = tags_clean[tags_clean["movieId"].isin(valid_movie_ids)]
+
+        # Cap tags per user per movie
+        if config.TAG_MAX_PER_USER_MOVIE > 0:
+            tags_clean = tags_clean.groupby(["userId", "movieId"]).head(config.TAG_MAX_PER_USER_MOVIE).reset_index(drop=True)
+
+        if not tags_clean.empty:
+            report.tag_timestamp_range = (int(tags_clean["timestamp"].min()), int(tags_clean["timestamp"].max()))
     else:
         tags_clean = pd.DataFrame(columns=["userId", "movieId", "tag", "timestamp"])
 
@@ -301,12 +342,19 @@ def validate_and_clean_data(
         links_clean = links_raw.copy()
         links_clean["movieId"] = pd.to_numeric(links_clean["movieId"], errors="coerce").dropna().astype(np.int64)
         links_clean = links_clean[links_clean["movieId"].isin(valid_movie_ids)]
-        links_clean = links_clean.drop_duplicates(subset=["movieId"])
+        links_clean = links_clean.drop_duplicates(subset=["movieId"], keep="first")
 
-    # Final counts
+    # Final counts and sparsity
     report.clean_movie_count = len(movies_clean)
     report.clean_rating_count = len(ratings_clean)
     report.clean_tag_count = len(tags_clean)
     report.clean_user_count = int(ratings_clean["userId"].nunique())
+
+    n_u = report.clean_user_count
+    n_m = report.clean_movie_count
+    total_cells = n_u * n_m
+    if total_cells > 0:
+        sparsity = 1.0 - (report.clean_rating_count / total_cells)
+        report.sparsity_percentage = round(sparsity * 100.0, 2)
 
     return movies_clean, ratings_clean, tags_clean, links_clean, report

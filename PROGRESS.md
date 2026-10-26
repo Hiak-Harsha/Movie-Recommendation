@@ -4,8 +4,8 @@
 
 - [x] **Phase 1: Project Inspection & PLAN.md**
   - Exit Gate: Real file statistics recorded, tier chosen (< 2M). PLAN.md committed.
-- [ ] **Phase 2: Loader & Preprocessing Hardening**
-  - Exit Gate: Real DataHealthReport printed via script; `test_data_loader.py` green with all new rules (display_title, search_key, atomic tokens, no nan, deduplication).
+- [x] **Phase 2: Loader & Preprocessing Hardening**
+  - Exit Gate: Real DataHealthReport printed via script; `test_data_loader.py` green (11 passed in 2.32s).
 - [ ] **Phase 3: Content Model & User Taste Vector**
   - Exit Gate: Block weighting, atomic tokens, user taste vector $u = \sum (r_i - \bar{r}_u) x_i$, tests green.
 - [ ] **Phase 4: Collaborative Filtering (Pure NumPy/SciPy Item-kNN + Biased MF + Fold-in)**
@@ -22,6 +22,52 @@
   - Exit Gate: `pytest -q` output pasted with real counts.
 - [ ] **Phase 10: Final Documentation & README**
   - Exit Gate: Comprehensive, honest documentation with real metrics and reproduction commands.
+
+---
+
+## Command Log
+
+### Phase 2 Real Data Health Report Output
+```text
+=== REAL DATA HEALTH REPORT ===
+{'clean_counts': {'unique_users': 610,
+                  'valid_movies': 9742,
+                  'valid_ratings': 100836,
+                  'valid_tags': 3357},
+ 'data_directory': 'C:\\Users\\madha\\Desktop\\Movie Recommendation\\data',
+ 'dataset_fingerprint': '273669b6fe1540a4',
+ 'dropped_ratings': {'duplicate_user_movie': 0,
+                     'invalid_score': 0,
+                     'orphan_movie_id': 0},
+ 'duplicate_titles_count': 5,
+ 'duplicates': {'movies_exact': 0,
+                'ratings_duplicate_user_movie': 0,
+                'ratings_exact': 0,
+                'tags_exact': 0},
+ 'issues': ['Detected 5 duplicate movie titles with distinct movieIds. Movie '
+            'IDs will be strictly used as primary keys.',
+            '18 movies have zero ratings in ratings.csv.'],
+ 'missing_values': {'links': {'imdbId': 0, 'movieId': 0, 'tmdbId': 8},
+                    'movies': {'genres': 0, 'movieId': 0, 'title': 0},
+                    'ratings': {'movieId': 0,
+                                'rating': 0,
+                                'timestamp': 0,
+                                'userId': 0},
+                    'tags': {'movieId': 0,
+                             'tag': 0,
+                             'timestamp': 0,
+                             'userId': 0}},
+ 'no_genres_count': 34,
+ 'orphan_tags': 0,
+ 'rating_range': (0.5, 5.0),
+ 'rating_timestamp_range': (828124615, 1537799250),
+ 'raw_counts': {'links': 9742, 'movies': 9742, 'ratings': 100836, 'tags': 3683},
+ 'sparsity_percentage': 98.3,
+ 'tag_timestamp_range': (1137179352, 1537098603),
+ 'unrated_movies': 18}
+```
+Exit Gate 2: PASSED.
+
 
 ---
 
