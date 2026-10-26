@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #0b0b0c;
@@ -13,21 +15,6 @@
   --accent-glow: rgba(245, 158, 11, 0.15);
   --muted: #71717a;
   --muted-light: #a1a1aa;
-  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-surface-hover: var(--surface-hover);
-  --color-surface-active: var(--surface-active);
-  --color-border: var(--border);
-  --color-accent: var(--accent);
-  --color-accent-light: var(--accent-light);
-  --color-muted: var(--muted);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
 }
 
 * {
@@ -38,7 +25,6 @@ html {
   background-color: #0b0b0c;
   color: #f4f4f5;
   color-scheme: dark;
-  scroll-behavior: smooth;
 }
 
 body {
@@ -46,8 +32,6 @@ body {
   color: #f4f4f5;
   font-family: var(--font-sans);
   overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Custom scrollbar for cinema studio feel */
@@ -66,7 +50,7 @@ body {
   background: #3f3f46;
 }
 
-/* Subtle glassmorphism */
+/* Glassmorphism */
 .glass-panel {
   background: rgba(18, 18, 20, 0.75);
   backdrop-filter: blur(12px);
