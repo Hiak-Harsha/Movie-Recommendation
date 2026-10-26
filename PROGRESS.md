@@ -9,8 +9,8 @@
 - [x] **Phase 3: Content Model & User Taste Vector**
   - Exit Gate: Multi-block TF-IDF (genres + decade + atomic tags), user taste vector $u = \sum (r_i - \bar{r}_u) x_i$, title search with article handling; 7 tests green in 28.37s.
   - Sample Output: The Matrix (1999) retrieves Sliding Doors (Match 0.4497, 'Shared tags: alternate universe'), House of Flying Daggers (Match 0.3838, 'Shared genres: Action', 'Shared tags: martial arts').
-- [ ] **Phase 4: Collaborative Filtering (Pure NumPy/SciPy Item-kNN + Biased MF + Fold-in)**
-  - Exit Gate: Models run without external C-dependencies; fold-in works for new visitors; validation comparison logged.
+- [x] **Phase 4: Collaborative Filtering (Pure NumPy/SciPy Item-kNN + Biased MF + Fold-in)**
+  - Exit Gate: Pure NumPy/SciPy Item-kNN with shrinkage and Biased MF with closed-form fold-in; tests green (3 passed in 8.09s); Val RMSE 0.8801.
 - [ ] **Phase 5: Popularity, Hybrid Blending, Pool-Independent Normalization & Explanations**
   - Exit Gate: Deterministic tie-breaking, dynamic re-weighting, evidence-based explanations, tests green.
 - [ ] **Phase 6: Evaluation CLI & Leakage Test**
