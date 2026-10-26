@@ -35,8 +35,14 @@ def make_clean_zip():
                 zipf.write(full_path, arcname)
                 file_count += 1
                 
-    size_mb = os.path.getsize(desktop_zip) / (1024 * 1024)
-    print(f"Successfully created: {desktop_zip}")
+    project_zip = os.path.join(root_dir, "CineMatch_Project.zip")
+    import shutil
+    shutil.copy2(desktop_zip, project_zip)
+    
+    size_mb = os.path.getsize(project_zip) / (1024 * 1024)
+    print(f"Successfully created:")
+    print(f"  1. Inside project folder: {project_zip}")
+    print(f"  2. On Desktop:           {desktop_zip}")
     print(f"Total files: {file_count}")
     print(f"Archive size: {size_mb:.2f} MB")
     
