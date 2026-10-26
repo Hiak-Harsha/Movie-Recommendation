@@ -2,175 +2,179 @@
 
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%20%7C%203.14-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.56+-FF4B4B.svg)
-![Tests](https://img.shields.io/badge/pytest-21%20passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/pytest-30%20passed-brightgreen.svg)
 ![Dataset](https://img.shields.io/badge/MovieLens-ml--latest--small-orange.svg)
+![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)
 
-**CineMatch** is an end-to-end, workflow-driven movie recommendation workspace inspired by clean, process-oriented tools. It replaces generic black-box recommendations with a transparent hybrid recommendation pipeline, evidence-based explanations, zero-leakage offline evaluation, and a refined dark cinematic interface.
+**CineMatch** is an end-to-end, workflow-driven movie recommendation workspace. It replaces opaque black-box recommenders with a transparent multi-signal engine, evidence-backed explanations, zero-leakage temporal evaluation, pure NumPy/SciPy collaborative filtering, and a focused studio interface.
 
 ---
 
-## 1. Architecture & Directory Structure
+## 1. Project Architecture
 
 ```text
 Movie Recommendation/
-├── app.py                      # Main Streamlit application shell & page workflows
-├── config.py                   # Centralized configuration, paths, and hyperparameters
-├── requirements.txt            # Dependency specifications
+├── app.py                      # Studio workspace navigation & page workflows
+├── config.py                   # Centralized configuration, hyperparameters & paths
+├── requirements.txt            # Pinned dependencies tested on Python 3.14
+├── pytest.ini                  # Pytest configuration ignoring backups
 ├── README.md                   # System documentation & setup guide
+├── PLAN.md                     # Initial project inspection & architecture plan
+├── PROGRESS.md                 # Phase-by-phase execution log & verification checklist
 ├── .gitignore                  # Git exclusions
 ├── .streamlit/
-│   └── config.toml             # Streamlit dark cinematic theme & server options
+│   └── config.toml             # Streamlit near-black theme & server options
+├── artifacts/                  # Offline evaluation artifacts & cache
+│   └── eval_results.json       # Evaluated metrics with 95% bootstrap CIs
 ├── data/                       # MovieLens dataset CSV files
 │   ├── movies.csv              # 9,742 movie records (movieId, title, genres)
 │   ├── ratings.csv             # 100,836 ratings across 610 users (0.5 to 5.0 stars)
 │   ├── tags.csv                # 3,683 user-applied descriptive tags
 │   ├── links.csv               # External identifiers (IMDb, TMDb)
-│   └── README.txt              # Official GroupLens dataset metadata
+│   └── README.txt              # GroupLens dataset metadata
 ├── src/
 │   ├── __init__.py             # Package marker
-│   ├── data_loader.py          # Flexible path resolution, schema validation & data health audit
-│   ├── preprocessing.py       # Title release year extraction, genre normalization, Bayesian smoothing
-│   ├── content_model.py        # TF-IDF vectorization, sparse cosine similarity, and search
-│   ├── collaborative_model.py  # Item-Item Collaborative Filtering with mean centering & shrinkage
-│   ├── hybrid_model.py         # Multi-signal ranker, candidate filtering, and cold-start fallback
-│   ├── evaluation.py           # 80/20 per-user temporal split, Precision@10, Recall@10, RMSE/MAE
-│   ├── styles.py               # Cinematic dark design system (custom CSS)
-│   └── ui_components.py        # Reusable movie cards, session state manager & badge formatters
+│   ├── data_loader.py          # Schema validation, fingerprinting & DataHealthReport
+│   ├── preprocessing.py        # Article-aware title parsing, atomic genres & Bayesian popularity
+│   ├── content_model.py        # Multi-block TF-IDF features & user taste vector
+│   ├── collaborative_model.py  # Pure NumPy/SciPy Item-kNN, Biased MF & closed-form fold-in
+│   ├── hybrid_model.py         # Multi-signal ranker, pool-independent scaling & explanations
+│   ├── evaluation.py           # Temporal split, bootstrap CIs & evaluation CLI
+│   ├── styles.py               # Studio design system (near-black theme & layout)
+│   └── ui_components.py        # Cards, typographic poster tiles, session state & watchlist
 └── tests/
-    ├── test_data_loader.py     # Schema integrity, missing paths, duplicate records, Bayesian smoothing
-    ├── test_recommendations.py # Title search, seed movie exclusion, deterministic results, filters
-    └── test_hybrid_model.py    # Score combination, cold-start fallback, already-rated exclusion, evaluation
+    ├── test_data_loader.py     # Schema validation, deduplication, title parsing & health report
+    ├── test_recommendations.py # TF-IDF features, taste vector, seed exclusion & search
+    ├── test_collaborative.py   # Item-kNN shrinkage, Biased MF SGD & fold-in
+    ├── test_hybrid_model.py    # Blending, missing signal renormalization, filters & tie-breaking
+    └── test_evaluation.py     # Metric correctness, sentinel leakage test & quality gate
 ```
 
 ---
 
-## 2. Recommendation Algorithms & Mathematical Formulations
+## 2. Recommendation Pipeline & Mathematical Formulations
 
-### A. Content-Based Filtering (`src/content_model.py`)
-- **Feature Representation:** Builds a combined text corpus per movie using normalized genres (e.g. `sci_fi`, `film_noir`) and aggregated user tags.
-- **Vectorization:** `TfidfVectorizer` transforms features into high-dimensional sparse representations with sublinear term-frequency scaling.
-- **Retrieval:** Evaluates cosine similarity directly on sparse vectors via linear kernel dot products:
-  $$\text{Sim}(v_{\text{seed}}, v_j) = \frac{v_{\text{seed}} \cdot v_j}{\|v_{\text{seed}}\| \|v_j\|}$$
-  Avoids computing dense $N \times N$ similarity matrices.
-- **Search:** Case-insensitive, multi-token fuzzy title search ranking exact matches, prefix matches, and token intersections.
+### A. Multi-Block Content Model & User Taste Vector (`src/content_model.py`)
+- **Multi-Block Feature Representation:** Concatenates separate feature blocks horizontally:
+  1. *Genre Block:* Atomic tokens (e.g. `sci_fi`, `film_noir`, `imax`) combined with release decade tokens (`decade_1990s`).
+  2. *Tag Block:* Atomic multi-word tokens (e.g. `mind_bending`), deduplicated per `(user, movie, tag)` with sublinear TF scaling.
+- **Retrieval:** Evaluates sparse cosine similarities $s = \frac{x_{\text{seed}} \cdot x_j}{\|x_{\text{seed}}\| \|x_j\|}$ using `scipy.sparse` matrix multiplication and top-$K$ candidate retrieval via `argpartition` (excluding seed).
+- **User Taste Vector:** Incorporates directional user preference:
+  $$u = \sum_{i \in \mathcal{I}_u} (r_i - \bar{r}_u) x_i$$
+  Items rated below the user's mean push the taste vector away from those features. Candidates are scored via $\text{cosine}(u, x_j) \in [0, 1]$.
 
-### B. Item-Item Collaborative Filtering (`src/collaborative_model.py`)
-- **Rating Prediction:** Operates on the sparse training rating matrix. Unobserved ratings are **never** treated as zeros.
-- Given active user ratings $\mathcal{I}_u$ and user mean rating $\bar{r}_u$, the predicted preference for unrated candidate item $j$ is:
-  $$\hat{r}_{u, j} = \bar{r}_u + \frac{\sum_{i \in \mathcal{I}_u, s(i, j) > 0} s_{\text{shrunk}}(i, j) \cdot (r_{u, i} - \bar{r}_u)}{\sum_{i \in \mathcal{I}_u, s(i, j) > 0} |s_{\text{shrunk}}(i, j)|}$$
-- **Significance Shrinkage:** Down-weights item pairs with few co-raters to penalize low-confidence noise:
-  $$s_{\text{shrunk}}(i, j) = s(i, j) \cdot \min\left(\frac{n_{i, j}}{\gamma}, 1.0\right)$$
-  where $n_{i, j}$ is the number of co-raters and $\gamma = 5$.
-- Normalized collaborative score: $\text{collab\_score} = \frac{\hat{r}_{u, j} - 0.5}{4.5} \in [0, 1]$.
+### B. Pure NumPy/SciPy Collaborative Filtering (`src/collaborative_model.py`)
+Built entirely in standard NumPy and SciPy to eliminate third-party C-extension compilation issues:
+- **Item-kNN with Significance Shrinkage:** Pairwise similarity with mean centering and shrinkage:
+  $$s_{\text{shrunk}}(i, j) = s(i, j) \cdot \frac{n_{ij}}{n_{ij} + \lambda}$$
+  where $n_{ij}$ is the number of co-raters and $\lambda = 5.0$.
+- **Biased Matrix Factorization:** Explicit rating predictor trained via Stochastic Gradient Descent strictly on observed ratings:
+  $$\hat{r}_{u, i} = \mu + b_u + b_i + p_u \cdot q_i$$
+- **Closed-Form Fold-In for New Visitors:** For an active visitor with ratings $r_{\text{new}}$ across items with frozen factors $Q_I$ and biases $b_I$:
+  $$p_{\text{new}} = (Q_I^T Q_I + \lambda_{\text{reg}} I)^{-1} Q_I^T (r_{\text{new}} - \mu - b_I)$$
+  This provides low-latency collaborative scoring without full-model retraining.
 
 ### C. Bayesian Popularity Smoothing (`src/preprocessing.py`)
-- Calculates a weighted rating to eliminate sample-size bias (e.g. movies with 1 rating of 5.0):
-  $$\text{weighted\_rating} = \left(\frac{v}{v + m}\right) R + \left(\frac{m}{v + m}\right) C$$
-  Where:
-  - $R$ = average training rating of the movie
-  - $v$ = count of training ratings for the movie
-  - $m$ = prior weight threshold ($m = 10$)
-  - $C$ = overall global mean training rating ($C \approx 3.50$)
+- Stabilizes ranking for items with few ratings using a Bayesian prior:
+  $$WR = \left(\frac{v}{v + m}\right) R + \left(\frac{m}{v + m}\right) C$$
+  where $m$ is the 80th percentile of training rating counts ($m = 12.0$), $C$ is the global training mean ($\approx 3.50$), and $v$ is item rating count.
+- Scaled linearly to $[0, 1]$ via $\frac{WR - 0.5}{4.5}$.
 
 ### D. Hybrid Multi-Signal Ranking (`src/hybrid_model.py`)
-- Combines normalized component scores:
-  $$\text{hybrid\_score} = w_c \cdot S_{\text{content}} + w_{cf} \cdot S_{\text{collab}} + w_p \cdot S_{\text{pop}}$$
-  Default weights: $w_c = 0.45, w_{cf} = 0.45, w_p = 0.10$.
-- **Cold-Start Fallback:** When a visitor has $< 3$ ratings, the collaborative signal is unavailable. CineMatch transparently redistributes weights to Content ($0.75$) and Bayesian Popularity ($0.25$), displaying an honest notification badge explaining the fallback.
-- **Candidate Filtering:** Explicitly filters out items already rated by the user and enforces optional genre and release-year bounds prior to top-$K$ ranking.
+- **Pool-Independent Normalization:** Content cosine is naturally in $[0, 1]$; collaborative rating predictions are linearly scaled $[0.5, 5.0] \to [0, 1]$; Bayesian popularity is scaled to $[0, 1]$.
+- **Dynamic Weight Renormalization:** When a signal is unavailable (e.g. visitor has $< 5$ ratings), the missing signal is excluded and weights are dynamically renormalized:
+  $$\text{score} = \frac{\sum_{s \in \mathcal{S}_{\text{avail}}} w_s \cdot s_s}{\sum_{s \in \mathcal{S}_{\text{avail}}} w_s}$$
+  Missing signals are **never** treated as zeros.
+- **Deterministic Tie-Breaking:** Sorted deterministically by $(-\text{score}, \text{movieId})$.
+- **Factual Explanations:** Explanations cite only computed facts: overlapping genre tokens, top matching community tags, nearest neighbor co-raters, and predicted stars.
 
 ---
 
-## 3. Reproduction & Setup Instructions
+## 3. Reproduction & CLI Commands
 
-### Prerequisites
-- Python 3.11, 3.12, 3.13, or 3.14.
-- All dependencies run entirely locally with standard libraries (Pandas, SciPy, Scikit-learn, Streamlit). No external API key (TMDB or OpenAI) is required.
-
-### Installation
+### 1. Installation
 Clone or navigate into the repository:
 ```bash
 cd "c:\Users\madha\Desktop\Movie Recommendation"
 ```
-
-Install the dependencies:
+Install dependencies:
 ```bash
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-### Dataset Placement
-The dataset files are automatically detected from `data/` or `ml-latest-small/ml-latest-small/`. Ensure the following files exist:
-- `data/movies.csv`
-- `data/ratings.csv`
-- `data/tags.csv`
-- `data/links.csv`
-
-### Running the Test Suite
-Run the 21 automated unit tests:
+### 2. Run the Offline Evaluation CLI
+Run the leakage-free temporal split evaluation:
 ```bash
-python -m pytest -v
+python -m src.evaluation --protocol temporal --seed 42
 ```
+This produces `artifacts/eval_results.json` containing 95% bootstrap confidence intervals for all compared models.
 
-### Launching the Application
-Start the Streamlit application:
+### 3. Run the Automated Test Suite
+Execute the 30 unit tests across the test suite:
+```bash
+python -m pytest -v -q
+```
+*Result: 30 passed in ~54s.*
+
+### 4. Launch the Web Application
+Start CineMatch:
 ```bash
 streamlit run app.py
 ```
-Open your browser at `http://localhost:8501`.
+Open `http://localhost:8501` in your browser.
 
 ---
 
-## 4. Workspaces & Workflows
+## 4. Offline Evaluation Benchmark & Quality Gate
 
-1. **🧭 Discover:**
-   - Quick search across 9,742 titles.
-   - Bayesian top-rated classics ($m \ge 10$ prior smoothing).
-   - One-click workflow routing to Similar Movies or Personalized recommendations.
-2. **🎬 Similar Movies:**
-   - Search and select any seed film.
-   - Real-time TF-IDF content similarity ranking with genre and release year constraints.
-   - Factual explanations detailing shared genres and matching community tags.
-3. **✨ For You (Personalized Hybrid):**
-   - Rate movies using an interactive 0.5–5.0 star selector, or load real MovieLens benchmark profiles (e.g., User #15, User #414, User #599, User #606).
-   - View component score breakdowns (Content %, Collaborative predicted stars, Popularity %).
-   - Fine-tune hybrid weights in real time with interactive sliders.
-4. **📌 Watchlist:**
-   - Save or remove titles during the discovery session.
-   - Tracks session counts and average rating without broken links or placeholders.
-5. **📊 Model Insights:**
-   - Data health summary with null audits, duplicate checks, and unrated title analysis.
-   - Evaluated metrics (Precision@10, Recall@10, Catalog Coverage, RMSE, MAE) computed strictly on held-out test data.
+### Protocol Specifications
+- **Temporal Split:** 70% Train / 10% Validation / 20% Test, partitioned strictly by rating timestamps.
+- **Data Leakage Sentinel:** All IDF vocabularies, tag sets, popularity priors, and user/item factors are computed strictly from pre-cutoff data. A dedicated leakage test verifies that post-cutoff sentinel tags never appear in pre-cutoff vocabularies.
+- **Relevance Threshold:** Held-out ratings $\ge 4.0$ stars are treated as ground-truth positive hits.
+- **Candidate Pool:** All catalogue items unseen by the user during training.
+
+### Test Split Results (with 95% Bootstrap Confidence Intervals)
+
+| Recommender Pipeline | Test NDCG@10 (95% CI) | Test Precision@10 (95% CI) | Test Recall@10 (95% CI) | Test MAP@10 (95% CI) | Catalog Coverage |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Random Baseline** | `0.0000` `[0.0000, 0.0000]` | `0.0000` `[0.0000, 0.0000]` | `0.0000` `[0.0000, 0.0000]` | `0.0000` `[0.0000, 0.0000]` | 0.9% |
+| **Popularity Baseline** | **0.0941** `[0.0000, 0.2278]` | **0.0889** `[0.0000, 0.2000]` | **0.0137** `[0.0000, 0.0359]` | **0.0551** `[0.0000, 0.1449]` | 0.4% |
+| **Content Recommender** | `0.0071` `[0.0000, 0.0212]` | `0.0111` `[0.0000, 0.0333]` | `0.0020` `[0.0000, 0.0061]` | `0.0011` `[0.0000, 0.0033]` | 0.9% |
+| **Item-kNN CF** | `0.0770` `[0.0000, 0.1735]` | `0.0667` `[0.0000, 0.1556]` | `0.0106` `[0.0000, 0.0284]` | `0.0391` `[0.0000, 0.0894]` | 0.8% |
+| **CineMatch Hybrid** | `0.0245` `[0.0000, 0.0734]` | `0.0111` `[0.0000, 0.0333]` | `0.0008` `[0.0000, 0.0025]` | `0.0111` `[0.0000, 0.0333]` | 0.9% |
+
+### Collaborative Rating Prediction Accuracy
+- **Test RMSE:** `0.5812`
+- **Test MAE:** `0.5812`
+
+### Quality Gate Outcome
+- **Selected Model:** `Popularity Baseline`
+- **Quality Gate Rule:** The specification requires that if the hybrid model does not exceed the best single component on validation NDCG@10, the system must ship the best single model and honestly disclose it.
+- On the validation split, `Popularity Baseline` achieved **Val NDCG@10 = 0.0776**, compared to `CineMatch Hybrid` at **0.0444** and `Item-kNN` at **0.0309**.
+- **Root Cause Analysis:** On power-law rating distributions with strict temporal splits, users rating films in later years disproportionately rate universally acclaimed historical blockbusters. Consequently, Bayesian smoothed popularity serves as a strong global ranking baseline. CineMatch's Model Insights view displays this outcome with full statistical transparency.
 
 ---
 
-## 5. Offline Evaluation Protocol & Real Results
+## 5. Studio Workspaces & UI Design
 
-Evaluation protocol:
-- **Split:** 80/20 per-user temporal split based on ratings timestamp. Earliest 80% used for training, latest 20% held out for evaluation.
-- **Relevance:** Test ratings $\ge 4.0$ stars are treated as positive ground-truth items.
+Inspired by process-oriented studio tools, CineMatch features a dark aesthetic (`#0b0b0c` background, subtle borders, amber accents) with numbered workflow stages (`01 Choose · 02 Tune · 03 Review`):
 
-### Evaluated Results Summary
-| Model Pipeline | Precision@10 | Recall@10 | Catalog Coverage | Evaluated Test Users |
-| :--- | :--- | :--- | :--- | :--- |
-| **Popularity Baseline** | 0.046 | 0.052 | 0.4% | 35 |
-| **Content-Based Model** | 0.040 | 0.048 | 6.8% | 35 |
-| **Collaborative Filtering** | 0.063 | 0.076 | 4.9% | 35 |
-| **CineMatch Hybrid** | **0.069** | **0.082** | **7.4%** | 35 |
-
-- **Collaborative Rating Prediction RMSE:** `0.887`
-- **Collaborative Rating Prediction MAE:** `0.694`
-*(Computed on held-out test ratings strictly without data leakage).*
+1. **01 / Discover:** Title search with live suggestions, computed ticker strip showing top genres and Bayesian classics, and navigation cards to all studios.
+2. **02 / Similar Movies:** Seed movie selection with metadata summary, multi-block TF-IDF similarity, genre/year filters, and "Use as new seed" exploration chaining.
+3. **03 / For You:** Interactive profile builder (search & rate, sample MovieLens profiles), cold-start evidence meter (Low / Medium / High), transparent fallback explanations, and signal mix sliders.
+4. **04 / Watchlist:** Session-managed discovery queue with card removal and one-click CSV export. Built using `st.fragment` to avoid page recalculations.
+5. **05 / Model Insights:** Comprehensive audit displaying DataHealthReport, dataset fingerprint (`273669b6fe1540a4`), split date boundaries, benchmark metrics table with 95% CIs, and the quality gate report.
 
 ---
 
 ## 6. Known Limitations & Next 3 Improvements
 
 ### Known Limitations
-1. **Metadata Coverage:** MovieLens `ml-latest-small` does not provide plot summaries, cast lists, or director credits. CineMatch strictly bases content similarity on genres and user tags and avoids fabricating narrative plot themes.
-2. **Matrix Sparsity:** With 100,836 ratings over 610 users and 9,724 rated movies (density $\approx 1.7\%$), very niche movies with few co-ratings rely primarily on content and Bayesian signals.
-3. **Session Persistence:** Watchlists and custom ratings are maintained in memory within the current Streamlit browser session.
+1. **Metadata Depth:** `ml-latest-small` contains only genres and user tags; `genome-scores.csv` is absent. Content similarity relies on atomic genre tokens and community tags rather than cast, director, or plot summaries.
+2. **Matrix Sparsity:** With 100,836 ratings over 9,724 movies (sparsity $98.3\%$), collaborative scoring for obscure films with few co-raters yields wider confidence intervals.
+3. **Session Watchlist:** Custom ratings and saved watchlist items are preserved in memory during the browser session.
 
 ### Next 3 High-Value Improvements
-1. **Lightweight Neural Embeddings (Two-Tower Model):** Train a dual-encoder architecture mapping user rating sequences and movie genre/tag tokens into a shared low-dimensional embedding space.
-2. **Local Metadata Enrichment (TMDb / OMDB Integration):** Optional offline ingestion of director, cast, and poster art via TMDB API for users who provide an optional free API key.
-3. **Session Persistence with SQLite:** Add a local SQLite database to persist custom user profiles and watchlists across multiple sessions without cloud accounts.
+1. **Vector Embeddings via Sentence-Transformers:** Generate dense semantic embeddings of tags and movie titles for enhanced zero-shot semantic search.
+2. **Implicit Feedback Optimization (BPR-MF):** Implement Bayesian Personalized Ranking on implicit interaction signals (clicks, watchlist additions) to optimize ranking over rating prediction.
+3. **Persistent SQLite Backend:** Replace session-state storage with a lightweight local SQLite database to persist custom user ratings and watchlists across browser restarts.
