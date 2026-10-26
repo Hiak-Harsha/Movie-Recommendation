@@ -6,8 +6,9 @@
   - Exit Gate: Real file statistics recorded, tier chosen (< 2M). PLAN.md committed.
 - [x] **Phase 2: Loader & Preprocessing Hardening**
   - Exit Gate: Real DataHealthReport printed via script; `test_data_loader.py` green (11 passed in 2.32s).
-- [ ] **Phase 3: Content Model & User Taste Vector**
-  - Exit Gate: Block weighting, atomic tokens, user taste vector $u = \sum (r_i - \bar{r}_u) x_i$, tests green.
+- [x] **Phase 3: Content Model & User Taste Vector**
+  - Exit Gate: Multi-block TF-IDF (genres + decade + atomic tags), user taste vector $u = \sum (r_i - \bar{r}_u) x_i$, title search with article handling; 7 tests green in 28.37s.
+  - Sample Output: The Matrix (1999) retrieves Sliding Doors (Match 0.4497, 'Shared tags: alternate universe'), House of Flying Daggers (Match 0.3838, 'Shared genres: Action', 'Shared tags: martial arts').
 - [ ] **Phase 4: Collaborative Filtering (Pure NumPy/SciPy Item-kNN + Biased MF + Fold-in)**
   - Exit Gate: Models run without external C-dependencies; fold-in works for new visitors; validation comparison logged.
 - [ ] **Phase 5: Popularity, Hybrid Blending, Pool-Independent Normalization & Explanations**
