@@ -13,8 +13,8 @@
   - Exit Gate: Pure NumPy/SciPy Item-kNN with shrinkage and Biased MF with closed-form fold-in; tests green (3 passed in 8.09s); Val RMSE 0.8801.
 - [x] **Phase 5: Popularity, Hybrid Blending, Pool-Independent Normalization & Explanations**
   - Exit Gate: Deterministic tie-breaking, dynamic re-weighting, evidence-based explanations; 5 tests green in 54.26s.
-- [ ] **Phase 6: Evaluation CLI & Leakage Test**
-  - Exit Gate: `python -m src.evaluation --protocol temporal --seed 42` produces `artifacts/eval_results.json` with 95% bootstrap CIs. Sentinel leakage test passes.
+- [x] **Phase 6: Evaluation CLI & Leakage Test**
+  - Exit Gate: `python -m src.evaluation --protocol temporal --seed 42` ran and produced `artifacts/eval_results.json` with 95% bootstrap CIs. All 4 evaluation and sentinel leakage tests green in 4.87s. Quality gate logged.
 - [ ] **Phase 7: Studio Layout UI & Components**
   - Exit Gate: Studio layout (rail, canvas, inspector), typographic poster tiles, real widgets (`st.container(border=True, key=...)`), HTML escaping, ticker strip, manual checklist verified.
 - [ ] **Phase 8: Visual Polish & Responsive Layout**
