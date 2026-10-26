@@ -25,4 +25,7 @@ Thumbs.db
 *.zip
 _backup/
 artifacts/
-
+*.db
+node_modules/
+.next/
+dist/

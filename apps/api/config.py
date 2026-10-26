@@ -17,6 +17,9 @@ class APISettings(BaseSettings):
     artifacts_dir: Path = Path(__file__).resolve().parent.parent.parent / "artifacts"
     data_dir: Path = Path(__file__).resolve().parent.parent.parent / "data"
 
+    # Database settings (SQLite default)
+    database_url: str = "sqlite:///./data/cinematch.db"
+
     # TMDB Integration (optional, API key never exposed to client)
     tmdb_api_key: str = ""
     tmdb_base_url: str = "https://api.themoviedb.org/3"

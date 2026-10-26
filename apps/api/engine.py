@@ -152,6 +152,31 @@ class ServingEngine:
         duration = time.time() - t0
         logger.info(f"ServingEngine loaded in {duration:.3f} s (cold start target < 3 s).")
 
+    def get_movie_metadata(self, movie_id: int) -> Dict[str, Any]:
+        """Returns metadata dictionary for a movieId from the preloaded catalog."""
+        if not self.is_loaded or movie_id not in self.movie_to_idx:
+            return {}
+        idx = self.movie_to_idx[movie_id]
+        row = self.catalog_df.iloc[idx]
+        genres_str = row.get("genres_list", "")
+        genres = genres_str.split("|") if isinstance(genres_str, str) and genres_str else []
+        year = int(row["year"]) if "year" in row and pd.notna(row["year"]) and row["year"] > 0 else None
+        tmdb_id = int(row["tmdbId"]) if "tmdbId" in row and pd.notna(row["tmdbId"]) and row["tmdbId"] > 0 else None
+        imdb_id = str(row["imdbId"]) if "imdbId" in row and pd.notna(row["imdbId"]) else None
+        return {
+            "movieId": movie_id,
+            "title": str(row.get("title", f"Movie #{movie_id}")),
+            "display_title": str(row.get("display_title", row.get("title", f"Movie #{movie_id}"))),
+            "year": year,
+            "genres": genres,
+            "vote_average": float(row.get("vote_average", 0.0)),
+            "vote_count": int(row.get("vote_count", 0)),
+            "weighted_rating": float(row.get("weighted_rating", 0.0)),
+            "tmdbId": tmdb_id,
+            "imdbId": imdb_id,
+        }
+
+
     def _apply_boolean_filters(
         self,
         candidate_indices: np.ndarray,

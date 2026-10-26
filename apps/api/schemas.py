@@ -107,3 +107,81 @@ class ModelMetaResponse(BaseModel):
     als_factors: int
     blend_coefficients: Dict[str, float]
     quality_gate_selected_model: str
+
+
+# Persistence & Accounts Schemas (Defect D7)
+class UserCreate(BaseModel):
+    username: Optional[str] = Field(None, max_length=128)
+
+
+class UserResponse(BaseModel):
+    id: str
+    username: str
+    rating_count: int = 0
+    watchlist_count: int = 0
+    created_at: str
+
+
+class RatingCreate(BaseModel):
+    movieId: int = Field(..., ge=1)
+    rating: float = Field(..., ge=0.5, le=5.0)
+
+
+class RatingItem(BaseModel):
+    movieId: int
+    rating: float
+    title: str
+    display_title: str
+    year: Optional[int] = None
+    genres: List[str] = Field(default_factory=list)
+    created_at: str
+
+
+class WatchlistCreate(BaseModel):
+    movieId: int = Field(..., ge=1)
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class WatchlistItem(BaseModel):
+    movieId: int
+    notes: Optional[str] = None
+    title: str
+    display_title: str
+    year: Optional[int] = None
+    genres: List[str] = Field(default_factory=list)
+    vote_average: float = 0.0
+    vote_count: int = 0
+    added_at: str
+
+
+class FeedbackCreate(BaseModel):
+    movieId: int
+    interaction_type: str = Field(..., pattern="^(click|like|dislike|dismiss)$")
+
+
+class FeedbackResponse(BaseModel):
+    status: str
+    message: str
+
+
+# Visuals & Media Schemas (Defect D8)
+class CastMember(BaseModel):
+    name: str
+    character: Optional[str] = None
+
+
+class MediaDetails(BaseModel):
+    tmdb_id: Optional[int] = None
+    movieId: int
+    title: str
+    poster_url: Optional[str] = None
+    backdrop_url: Optional[str] = None
+    overview: Optional[str] = None
+    cast: List[CastMember] = Field(default_factory=list)
+    director: Optional[str] = None
+    trailer_key: Optional[str] = None
+    streaming_providers: List[str] = Field(default_factory=list)
+    runtime: Optional[int] = None
+    vote_average: Optional[float] = None
+    fallback_accent: str = "#f59e0b"
+
