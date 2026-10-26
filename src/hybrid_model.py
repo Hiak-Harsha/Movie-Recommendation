@@ -1,34 +1,33 @@
 """
 CineMatch Hybrid Recommendation Engine
-Combines Content-Based, Collaborative Filtering, and Bayesian Popularity signals
-into a unified ranking pipeline with candidate filtering, cold-start fallback,
-and evidence-based transparent explanations.
+Combines Content-Based (user taste vector), Collaborative Filtering (Item-kNN / Biased MF),
+and Bayesian Popularity signals using stable, pool-independent normalization,
+dynamic weight re-normalization, and factual evidence-based explanations.
 """
 from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np
 import pandas as pd
-from sklearn.metrics.pairwise import linear_kernel
 
 import config
 from src.content_model import ContentRecommender
-from src.collaborative_model import CollaborativeRecommender
+from src.collaborative_model import CollaborativeEngine
 
 
 class HybridRecommender:
     """
-    Hybrid recommendation engine combining content, collaborative, and popularity signals.
-    Excludes rated items, handles cold-start users honestly, and produces explainable recommendations.
+    Hybrid recommendation engine with candidate pooling, pool-independent scoring,
+    and cold-start fallback.
     """
 
     def __init__(
         self,
         content_model: ContentRecommender,
-        collab_model: CollaborativeRecommender,
+        collab_engine: CollaborativeEngine,
         catalog_df: pd.DataFrame,
         default_weights: Optional[Dict[str, float]] = None
     ):
         self.content_model = content_model
-        self.collab_model = collab_model
+        self.collab_engine = collab_engine
         self.catalog_df = catalog_df.reset_index(drop=True)
         self.default_weights = default_weights or config.DEFAULT_HYBRID_WEIGHTS
 
@@ -36,129 +35,139 @@ class HybridRecommender:
         self,
         user_ratings: Dict[int, float],
         preferred_genres: Optional[List[str]] = None,
+        genre_match_mode: str = "OR",
         year_range: Optional[Tuple[int, int]] = None,
         weights: Optional[Dict[str, float]] = None,
         top_n: int = 10
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
-        Generates personalized recommendations for an active user profile.
+        Generates personalized hybrid recommendations for a user rating profile.
         
         Args:
             user_ratings: {movieId: star_rating (0.5 to 5.0)}
-            preferred_genres: Optional genre filter or boost
+            preferred_genres: Optional list of genre names
+            genre_match_mode: 'OR' (match any) or 'AND' (match all)
             year_range: Optional (min_year, max_year)
-            weights: Optional custom signal weights {'content', 'collaborative', 'popularity'}
+            weights: Optional custom weights {'content', 'collaborative', 'popularity'}
             top_n: Number of recommendations to return
             
         Returns:
             (ranked_movie_cards, meta_info_dict)
         """
         active_weights = dict(weights or self.default_weights)
-        rated_movie_ids = set(user_ratings.keys())
+        rated_mids = set(user_ratings.keys())
+        n_ratings = len(user_ratings)
 
-        # Determine if collaborative filtering can run
-        has_enough_cf_ratings = len(user_ratings) >= self.collab_model.min_user_ratings_for_cf
-        is_fallback_mode = not has_enough_cf_ratings
+        # Evidence Level & Cold-Start Detection
+        if n_ratings >= 10:
+            evidence_level = "High"
+        elif n_ratings >= config.MIN_USER_RATINGS_FOR_CF:
+            evidence_level = "Medium"
+        elif n_ratings >= 1:
+            evidence_level = "Low (Cold-Start)"
+        else:
+            evidence_level = "Zero (Popularity Baseline)"
+
+        has_cf = n_ratings >= config.MIN_USER_RATINGS_FOR_CF
+        is_fallback_mode = not has_cf
 
         fallback_reason = ""
         if is_fallback_mode:
             fallback_reason = (
-                f"Active profile has {len(user_ratings)} rating(s). Minimum {self.collab_model.min_user_ratings_for_cf} "
+                f"Profile contains {n_ratings} rating(s). Minimum {config.MIN_USER_RATINGS_FOR_CF} "
                 f"ratings required for Collaborative Filtering. Reallocating weights to Content and Bayesian Popularity."
             )
-            # Reallocate weights
             active_weights = dict(config.COLD_START_WEIGHTS)
 
-        # 1. Compute Collaborative predictions if eligible
+        # 1. Collaborative Signal
         collab_predictions: Dict[int, Dict[str, Any]] = {}
-        if not is_fallback_mode:
-            collab_predictions = self.collab_model.predict_user_preferences(user_ratings)
+        if has_cf:
+            collab_predictions = self.collab_engine.predict_user_preferences(user_ratings)
 
-        # 2. Build User Content Profile Vector
-        # Use user ratings >= 3.0 to construct a weighted profile vector in TF-IDF space
-        user_profile_vector = None
-        liked_movie_titles = []
-        if user_ratings:
-            profile_vectors = []
-            profile_weights = []
-            for mid, rating in user_ratings.items():
-                if mid in self.content_model.movie_id_to_idx and rating >= 3.0:
-                    idx = self.content_model.movie_id_to_idx[mid]
-                    vec = self.content_model.tfidf_matrix[idx]
-                    weight = rating - 2.5  # ratings 3.0 -> 0.5, 4.0 -> 1.5, 5.0 -> 2.5
-                    profile_vectors.append(vec.multiply(weight))
-                    profile_weights.append(weight)
-                    liked_movie_titles.append(self.catalog_df.iloc[idx]["clean_title"])
+        # 2. Content Signal: User Taste Vector
+        user_taste_vec = self.content_model.build_user_taste_vector(user_ratings)
+        content_scores_arr = self.content_model.score_candidates_for_user(user_taste_vec)
 
-            if profile_vectors and sum(profile_weights) > 0:
-                # Sum and normalize sparse vectors
-                user_profile_vector = sum(profile_vectors) / sum(profile_weights)
+        # Liked movies for explanation derivation
+        liked_mids = [mid for mid, r in user_ratings.items() if r >= 3.5]
+        liked_titles = [
+            self.content_model.get_movie_details(m)["display_title"]
+            for m in liked_mids[:3] if self.content_model.get_movie_details(m)
+        ]
 
-        # If no ratings >= 3.0 or no user ratings at all, use genre vector if preferred_genres provided
-        if user_profile_vector is None and preferred_genres:
-            genre_query = " ".join([g.lower().replace("-", "_").replace(" ", "_") for g in preferred_genres])
-            user_profile_vector = self.content_model.vectorizer.transform([genre_query])
-
-        # Compute content similarity across all movies if profile vector exists
-        content_sims = np.zeros(len(self.catalog_df))
-        if user_profile_vector is not None:
-            content_sims = linear_kernel(user_profile_vector, self.content_model.tfidf_matrix).flatten()
-
-        # 3. Filter candidates and combine signals
-        candidates = []
+        # 3. Candidate Pooling & Filtering
         w_content = active_weights.get("content", 0.45)
         w_collab = active_weights.get("collaborative", 0.45)
         w_pop = active_weights.get("popularity", 0.10)
 
+        candidates = []
         for idx, row in self.catalog_df.iterrows():
             mid = int(row["movieId"])
 
-            # Exclude movies already rated by the active user
-            if mid in rated_movie_ids:
+            # Exclude already-rated movies
+            if mid in rated_mids:
                 continue
 
-            # Filter by genre if preferred_genres provided
+            # Genre filter
             cand_genres = set(row.get("genres_list", []))
             if preferred_genres:
-                if not any(g in cand_genres for g in preferred_genres):
-                    continue
+                pref_set = set(preferred_genres)
+                if genre_match_mode.upper() == "AND":
+                    if not pref_set.issubset(cand_genres):
+                        continue
+                else:  # OR mode
+                    if not any(g in cand_genres for g in pref_set):
+                        continue
 
-            # Filter by release year
+            # Year filter
             if year_range:
                 cand_year = row.get("release_year")
                 if cand_year is not None:
                     if cand_year < year_range[0] or cand_year > year_range[1]:
                         continue
 
-            # Component Scores
-            s_content = float(content_sims[idx]) if idx < len(content_sims) else 0.0
+            # Component Scores (all pool-independent in [0.0, 1.0])
+            s_content = float(content_scores_arr[idx])
             s_pop = float(row.get("popularity_score", 0.0))
 
-            # Collaborative Score
             collab_info = collab_predictions.get(mid)
             if collab_info is not None:
                 s_collab = float(collab_info["collab_score"])
                 predicted_rating = float(collab_info["predicted_rating"])
-                has_collab = True
+                neighbor_info = collab_info.get("neighbor_info")
+                has_collab_pred = True
             else:
                 s_collab = None
                 predicted_rating = None
-                has_collab = False
+                neighbor_info = None
+                has_collab_pred = False
 
-            # Hybrid score calculation with honest missing signal handling
-            if has_collab and w_collab > 0:
-                total_w = w_content + w_collab + w_pop
-                hybrid_score = (w_content * s_content + w_collab * s_collab + w_pop * s_pop) / total_w
+            # Dynamic Re-weighting: missing is NEVER treated as zero!
+            signals_used = []
+            active_term_sum = 0.0
+            active_weight_sum = 0.0
+
+            if w_content > 0:
+                active_term_sum += w_content * s_content
+                active_weight_sum += w_content
+                signals_used.append("content")
+
+            if has_collab_pred and w_collab > 0:
+                active_term_sum += w_collab * s_collab
+                active_weight_sum += w_collab
+                signals_used.append("collaborative")
+
+            if w_pop > 0:
+                active_term_sum += w_pop * s_pop
+                active_weight_sum += w_pop
+                signals_used.append("popularity")
+
+            if active_weight_sum > 0:
+                hybrid_score = active_term_sum / active_weight_sum
             else:
-                # Re-normalize between content and popularity
-                total_w = w_content + w_pop
-                if total_w > 0:
-                    hybrid_score = (w_content * s_content + w_pop * s_pop) / total_w
-                else:
-                    hybrid_score = s_pop
+                hybrid_score = s_pop
 
             candidates.append({
-                "idx": idx,
                 "movieId": mid,
                 "row": row,
                 "hybrid_score": float(hybrid_score),
@@ -166,54 +175,62 @@ class HybridRecommender:
                 "collab_score": s_collab,
                 "predicted_rating": predicted_rating,
                 "popularity_score": float(s_pop),
-                "has_collab": has_collab,
+                "neighbor_info": neighbor_info,
+                "signals_used": signals_used,
             })
 
-        # Sort by hybrid score descending
-        candidates.sort(key=lambda x: x["hybrid_score"], reverse=True)
-        top_items = candidates[:top_n]
+        # Deterministic tie-breaking by (-hybrid_score, movieId)
+        candidates.sort(key=lambda x: (-x["hybrid_score"], x["movieId"]))
+        top_candidates = candidates[:top_n]
 
-        # 4. Generate structured results and evidence-based explanations
+        # 4. Evidence-based Explanations
         results = []
-        for item in top_items:
+        for item in top_candidates:
             mid = item["movieId"]
             row = item["row"]
             reasons = []
 
-            # Evidence 1: Collaborative preference
+            # Reason 1: Collaborative preference
             if item["predicted_rating"] is not None:
-                reasons.append(f"Predicted preference: {item['predicted_rating']} / 5.0★ based on your rating history")
+                reasons.append(f"Predicted rating ≈ {item['predicted_rating']}★ for your taste profile")
 
-            # Evidence 2: Genre alignment
+            # Reason 2: Liked by people who also liked X (Item-kNN evidence)
+            if item["neighbor_info"] is not None:
+                n_mid = item["neighbor_info"]["neighbor_movieId"]
+                n_sim = item["neighbor_info"]["similarity"]
+                n_co = item["neighbor_info"]["co_raters"]
+                n_details = self.content_model.get_movie_details(n_mid)
+                n_title = n_details["display_title"] if n_details else f"Movie #{n_mid}"
+                reasons.append(f"Liked by people who also liked {n_title} (similarity {n_sim}, {n_co} co-raters)")
+
+            # Reason 3: Genre alignment
             cand_genres = row.get("genres_list", [])
             if preferred_genres:
                 matching_pref = [g for g in cand_genres if g in preferred_genres]
                 if matching_pref:
                     reasons.append(f"Matches preferred genre(s): {', '.join(matching_pref)}")
 
-            # Evidence 3: Content profile similarity
-            if item["content_score"] > 0.2 and liked_movie_titles:
-                sample_liked = liked_movie_titles[:2]
-                reasons.append(f"High stylistic and genre overlap with your top rated movies ({', '.join(sample_liked)})")
+            # Reason 4: Content overlap with user taste
+            if item["content_score"] >= 0.25 and liked_titles:
+                reasons.append(f"High stylistic overlap with movies you rated highly ({', '.join(liked_titles)})")
 
-            # Evidence 4: Community popularity & Bayesian rating
+            # Reason 5: Community rating
             w_rating = row.get("weighted_rating", 0.0)
             r_count = row.get("rating_count", 0)
             if r_count >= 10:
-                reasons.append(f"Community favorite: {w_rating}★ Bayesian rating ({r_count} ratings)")
-            elif r_count > 0:
-                reasons.append(f"Community rating: {row.get('mean_rating', 0.0)}★ ({r_count} ratings)")
+                reasons.append(f"Community rating {w_rating}★ from {r_count:,} reviews (Bayesian prior)")
 
             if not reasons:
-                reasons.append("Discovered via catalog popularity baseline")
+                reasons.append("Discovered through catalog baseline ranking.")
 
             results.append({
                 "movieId": mid,
                 "title": str(row["title"]),
-                "clean_title": str(row.get("clean_title", row["title"])),
+                "display_title": str(row.get("display_title", row["title"])),
                 "release_year": row.get("release_year"),
                 "genres_display": str(row.get("genres_display", "")),
                 "genres_list": cand_genres,
+                "imdbId": row.get("imdbId"),
                 "hybrid_score": round(item["hybrid_score"], 4),
                 "content_score": round(item["content_score"], 4),
                 "collab_score": round(item["collab_score"], 4) if item["collab_score"] is not None else None,
@@ -222,14 +239,16 @@ class HybridRecommender:
                 "rating_count": int(row.get("rating_count", 0)),
                 "mean_rating": float(row.get("mean_rating", 0.0)),
                 "weighted_rating": float(row.get("weighted_rating", 0.0)),
+                "signals_used": item["signals_used"],
                 "reasons": reasons,
             })
 
         meta_info = {
+            "evidence_level": evidence_level,
             "is_fallback": is_fallback_mode,
             "fallback_reason": fallback_reason,
             "active_weights": active_weights,
-            "user_ratings_count": len(user_ratings),
+            "user_ratings_count": n_ratings,
             "cf_predictions_count": len(collab_predictions),
             "total_candidates_evaluated": len(candidates),
         }

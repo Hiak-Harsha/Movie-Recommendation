@@ -71,21 +71,14 @@ class ItemKNNRecommender:
             self.movie_means[mid_int] = float(group["rating"].mean())
             self.movie_counts[mid_int] = int(len(group))
 
-        # Build mean-centered rating matrix
-        row_indices = []
-        col_indices = []
-        centered_vals = []
-
-        for _, row in ratings_train.iterrows():
-            u = int(row["userId"])
-            m = int(row["movieId"])
-            r = float(row["rating"])
-            row_indices.append(self.user_to_idx[u])
-            col_indices.append(self.movie_to_idx[m])
-            centered_vals.append(r - self.user_means[u])
+        # Vectorized construction of mean-centered rating matrix
+        u_arr = ratings_train["userId"].map(self.user_to_idx).values.astype(np.int32)
+        m_arr = ratings_train["movieId"].map(self.movie_to_idx).values.astype(np.int32)
+        u_means_arr = ratings_train["userId"].map(self.user_means).values.astype(np.float32)
+        centered_vals = ratings_train["rating"].values.astype(np.float32) - u_means_arr
 
         R_user_item = csr_matrix(
-            (centered_vals, (row_indices, col_indices)),
+            (centered_vals, (u_arr, m_arr)),
             shape=(len(self.user_ids), len(self.movie_ids)),
             dtype=np.float32
         )
@@ -363,8 +356,8 @@ class CollaborativeEngine:
                 "neighbor_info": None
             }
 
-        # 2. Add Item-kNN neighbor explanation for top items
-        top_mids = sorted(results.keys(), key=lambda m: results[m]["predicted_rating"], reverse=True)[:30]
+        # 2. Add Item-kNN neighbor explanation for top ranked items
+        top_mids = sorted(results.keys(), key=lambda m: results[m]["predicted_rating"], reverse=True)[:10]
         for mid in top_mids:
             knn_res = self.item_knn.predict_rating_for_item(user_ratings, mid)
             if knn_res is not None:

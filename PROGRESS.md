@@ -11,8 +11,8 @@
   - Sample Output: The Matrix (1999) retrieves Sliding Doors (Match 0.4497, 'Shared tags: alternate universe'), House of Flying Daggers (Match 0.3838, 'Shared genres: Action', 'Shared tags: martial arts').
 - [x] **Phase 4: Collaborative Filtering (Pure NumPy/SciPy Item-kNN + Biased MF + Fold-in)**
   - Exit Gate: Pure NumPy/SciPy Item-kNN with shrinkage and Biased MF with closed-form fold-in; tests green (3 passed in 8.09s); Val RMSE 0.8801.
-- [ ] **Phase 5: Popularity, Hybrid Blending, Pool-Independent Normalization & Explanations**
-  - Exit Gate: Deterministic tie-breaking, dynamic re-weighting, evidence-based explanations, tests green.
+- [x] **Phase 5: Popularity, Hybrid Blending, Pool-Independent Normalization & Explanations**
+  - Exit Gate: Deterministic tie-breaking, dynamic re-weighting, evidence-based explanations; 5 tests green in 54.26s.
 - [ ] **Phase 6: Evaluation CLI & Leakage Test**
   - Exit Gate: `python -m src.evaluation --protocol temporal --seed 42` produces `artifacts/eval_results.json` with 95% bootstrap CIs. Sentinel leakage test passes.
 - [ ] **Phase 7: Studio Layout UI & Components**
