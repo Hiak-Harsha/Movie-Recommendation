@@ -128,30 +128,29 @@ Open `http://localhost:8501` in your browser.
 ## 4. Offline Evaluation Benchmark & Quality Gate
 
 ### Protocol Specifications
-- **Temporal Split:** 70% Train / 10% Validation / 20% Test, partitioned strictly by rating timestamps.
-- **Data Leakage Sentinel:** All IDF vocabularies, tag sets, popularity priors, and user/item factors are computed strictly from pre-cutoff data. A dedicated leakage test verifies that post-cutoff sentinel tags never appear in pre-cutoff vocabularies.
-- **Relevance Threshold:** Held-out ratings $\ge 4.0$ stars are treated as ground-truth positive hits.
-- **Candidate Pool:** All catalogue items unseen by the user during training.
+- **Primary Protocol:** Per-user temporal holdout (70% train / 10% validation / 20% test).
+- **Statistical Power:** **591 evaluated users** (with $\ge 1$ relevant item with rating $\ge 4.0$) across **20,706 held-out test pairs**.
+- **Data Leakage Sentinel:** All IDF vocabularies, tag dictionaries, popularity priors, and user/item factors are computed strictly from pre-cutoff data.
 
 ### Test Split Results (with 95% Bootstrap Confidence Intervals)
 
-| Recommender Pipeline | Test NDCG@10 (95% CI) | Test Precision@10 (95% CI) | Test Recall@10 (95% CI) | Test MAP@10 (95% CI) | Catalog Coverage |
+| Recommender Pipeline | Test NDCG@10 (95% CI) | Test Recall@10 (95% CI) | Test HitRate@10 (95% CI) | Catalog Coverage | Evaluated Users ($n$) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Random Baseline** | `0.0000` `[0.0000, 0.0000]` | `0.0000` `[0.0000, 0.0000]` | `0.0000` `[0.0000, 0.0000]` | `0.0000` `[0.0000, 0.0000]` | 0.9% |
-| **Popularity Baseline** | **0.0941** `[0.0000, 0.2278]` | **0.0889** `[0.0000, 0.2000]` | **0.0137** `[0.0000, 0.0359]` | **0.0551** `[0.0000, 0.1449]` | 0.4% |
-| **Content Recommender** | `0.0071` `[0.0000, 0.0212]` | `0.0111` `[0.0000, 0.0333]` | `0.0020` `[0.0000, 0.0061]` | `0.0011` `[0.0000, 0.0033]` | 0.9% |
-| **Item-kNN CF** | `0.0770` `[0.0000, 0.1735]` | `0.0667` `[0.0000, 0.1556]` | `0.0106` `[0.0000, 0.0284]` | `0.0391` `[0.0000, 0.0894]` | 0.8% |
-| **CineMatch Hybrid** | `0.0245` `[0.0000, 0.0734]` | `0.0111` `[0.0000, 0.0333]` | `0.0008` `[0.0000, 0.0025]` | `0.0111` `[0.0000, 0.0333]` | 0.9% |
+| **Random Baseline** | **0.0015** `[0.0005, 0.0026]` | `0.0007` `[0.0001, 0.0015]` | `1.4%` `[0.5%, 2.4%]` | `45.5%` | 591 |
+| **Popularity Baseline** | **0.0596** `[0.0496, 0.0692]` | `0.0347` `[0.0275, 0.0410]` | `28.8%` `[24.9%, 32.1%]` | `0.5%` | 591 |
+| **Content-Only** | **0.0047** `[0.0024, 0.0070]` | `0.0018` `[0.0009, 0.0028]` | `3.4%` `[1.9%, 5.1%]` | `25.9%` | 591 |
+| **Item-kNN CF** | **0.0130** `[0.0097, 0.0162]` | `0.0085` `[0.0054, 0.0118]` | `9.0%` `[6.8%, 11.0%]` | `6.0%` | 591 |
+| **Explicit ALS** | **0.0437** `[0.0362, 0.0500]` | `0.0254` `[0.0210, 0.0304]` | `24.2%` `[20.6%, 27.4%]` | `4.8%` | 591 |
+| **CineMatch Hybrid** | **0.0418** `[0.0331, 0.0502]` | `0.0304` `[0.0235, 0.0372]` | `21.8%` `[17.9%, 24.4%]` | `3.4%` | 591 |
 
 ### Collaborative Rating Prediction Accuracy
-- **Test RMSE:** `0.5812`
-- **Test MAE:** `0.5812`
+- **Test RMSE:** `0.9389` across 20,706 held-out test pairs
+- **Test MAE:** `0.7225` across 20,706 held-out test pairs
 
 ### Quality Gate Outcome
 - **Selected Model:** `Popularity Baseline`
-- **Quality Gate Rule:** The specification requires that if the hybrid model does not exceed the best single component on validation NDCG@10, the system must ship the best single model and honestly disclose it.
-- On the validation split, `Popularity Baseline` achieved **Val NDCG@10 = 0.0776**, compared to `CineMatch Hybrid` at **0.0444** and `Item-kNN` at **0.0309**.
-- **Root Cause Analysis:** On power-law rating distributions with strict temporal splits, users rating films in later years disproportionately rate universally acclaimed historical blockbusters. Consequently, Bayesian smoothed popularity serves as a strong global ranking baseline. CineMatch's Model Insights view displays this outcome with full statistical transparency.
+- **Quality Gate Rule:** If the hybrid model does not exceed the best single component on validation NDCG@10, the system ships the best single model and honestly discloses it.
+- **Validation Outcome:** Quality Gate Notice: Single model 'Popularity Baseline' (0.0433) achieved highest validation NDCG@10 over Hybrid (0.0393). Shipping 'Popularity Baseline'.
 
 ---
 

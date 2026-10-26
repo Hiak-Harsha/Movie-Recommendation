@@ -102,3 +102,21 @@ def test_sentinel_future_tag_leakage_prevention():
     assert 10 in agg
     assert "historical_valid" in agg[10]
     assert "future_sentinel_leak" not in agg[10]
+
+
+def test_per_user_temporal_split_properties():
+    from ml.evaluation import build_per_user_temporal_split
+    ratings = pd.DataFrame({
+        "userId": [1]*10 + [2]*10,
+        "movieId": list(range(1, 11)) + list(range(1, 11)),
+        "rating": [4.0]*20,
+        "timestamp": list(range(100, 110)) + list(range(200, 210))
+    })
+    train_df, val_df, test_df = build_per_user_temporal_split(ratings)
+    # 70% train (7), 10% val (1), 20% test (2) per user -> total 14 train, 2 val, 4 test
+    assert len(train_df) == 14
+    assert len(val_df) == 2
+    assert len(test_df) == 4
+    assert set(train_df["userId"].unique()) == {1, 2}
+    assert set(test_df["userId"].unique()) == {1, 2}
+
