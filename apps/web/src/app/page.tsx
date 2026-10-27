@@ -1,22 +1,32 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import { useStore } from "@/lib/store";
 import Navbar from "@/components/Navbar";
 import HeroWordmark from "@/components/HeroWordmark";
 import MarqueeTicker from "@/components/MarqueeTicker";
-import PinnedStudioWorkflow from "@/components/PinnedStudioWorkflow";
 import SearchModal from "@/components/SearchModal";
 import MovieDetailModal from "@/components/MovieDetailModal";
 import ForYouView from "@/components/views/ForYouView";
 import DiscoverView from "@/components/views/DiscoverView";
 import SimilarView from "@/components/views/SimilarView";
 import WatchlistView from "@/components/views/WatchlistView";
-import InsightsView from "@/components/views/InsightsView";
+import { surfaceCopy } from "@/copy/en";
 import { Film, CheckCircle2 } from "lucide-react";
 
+// Code-split About Drawer so none of it is in the first-load bundle
+const AboutDrawer = dynamic(() => import("@/modules/about/AboutDrawer"), {
+  ssr: false,
+});
+
 export default function Home() {
-  const { activeTab, toastMessage } = useStore();
+  const { activeTab, setActiveTab, setIsSearchOpen, setIsAboutOpen, setAboutTab, toastMessage } = useStore();
+
+  const openAboutSection = (tab: string) => {
+    setAboutTab(tab);
+    setIsAboutOpen(true);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0b0b0c] text-zinc-100">
@@ -24,7 +34,10 @@ export default function Home() {
       <Navbar />
 
       {/* Hero Presentation */}
-      <HeroWordmark />
+      <HeroWordmark
+        onStartPicking={() => setActiveTab("foryou")}
+        onSearchFilms={() => setIsSearchOpen(true)}
+      />
 
       {/* Marquee Ticker */}
       <MarqueeTicker />
@@ -35,25 +48,22 @@ export default function Home() {
         {activeTab === "discover" && <DiscoverView />}
         {activeTab === "similar" && <SimilarView />}
         {activeTab === "watchlist" && <WatchlistView />}
-        {activeTab === "insights" && <InsightsView />}
       </main>
-
-      {/* Pinned Engine Choreography Section */}
-      <PinnedStudioWorkflow />
 
       {/* Global Modals & Drawers */}
       <SearchModal />
       <MovieDetailModal />
+      <AboutDrawer />
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 border border-amber-500/40 text-amber-300 text-xs font-mono shadow-2xl animate-in slide-in-from-bottom-5 duration-200">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 border border-amber-500/40 text-amber-300 text-xs font-mono shadow-2xl transition-all">
           <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Footer */}
+      {/* Clean Visitor Footer */}
       <footer className="border-t border-zinc-900 bg-[#0a0a0c] py-12 text-xs text-zinc-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
@@ -61,18 +71,36 @@ export default function Home() {
               <Film className="w-3.5 h-3.5 text-black" />
             </div>
             <span className="font-mono font-bold text-zinc-300">
-              CINEMATCH v2
+              {surfaceCopy.brand.name}
             </span>
             <span>•</span>
-            <span>Production Movie Recommendation Product</span>
+            <span>{surfaceCopy.brand.tagline}</span>
           </div>
 
-          <div className="text-center sm:text-right space-y-1">
-            <p>GroupLens MovieLens ml-latest-small • 100,836 ratings • 610 users • 9,742 movies</p>
-            <p className="font-mono text-[11px] text-zinc-600">
-              Harper and Konstan (2015) Citation • Research & Development License
-            </p>
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => openAboutSection("howToUse")}
+              className="hover:text-amber-400 transition-colors cursor-pointer"
+            >
+              {surfaceCopy.footer.about}
+            </button>
+            <button
+              onClick={() => openAboutSection("terms")}
+              className="hover:text-amber-400 transition-colors cursor-pointer"
+            >
+              {surfaceCopy.footer.terms}
+            </button>
+            <button
+              onClick={() => openAboutSection("dataCredits")}
+              className="hover:text-amber-400 transition-colors cursor-pointer"
+            >
+              {surfaceCopy.footer.credits}
+            </button>
           </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 pt-6 border-t border-zinc-900/60 text-center sm:text-left text-[11px] text-zinc-600">
+          <p>{surfaceCopy.footer.tmdbNotice}</p>
         </div>
       </footer>
     </div>

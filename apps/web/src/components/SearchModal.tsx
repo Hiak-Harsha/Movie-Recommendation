@@ -64,7 +64,7 @@ export default function SearchModal() {
   if (!isSearchOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/80 backdrop-blur-md">
       <div
         className="relative w-full max-w-2xl rounded-2xl bg-[#141417] border border-zinc-700 shadow-2xl overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
@@ -77,7 +77,7 @@ export default function SearchModal() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search 9,742 movies by title, year (e.g. Inception 2010), or franchise..."
+            placeholder="Search films by title, year (e.g. Inception 2010), or genre..."
             className="w-full bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
           />
           {loading ? (

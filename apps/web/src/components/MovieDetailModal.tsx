@@ -86,7 +86,7 @@ export default function MovieDetailModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
       <div
         className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#121215] border border-zinc-800 shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
@@ -129,8 +129,8 @@ export default function MovieDetailModal() {
 
             <div className="flex-1">
               <div className="flex items-center gap-2 text-xs font-mono text-amber-500 mb-1">
-                <span>MovieLens #{media?.movieId}</span>
-                {media?.tmdb_id && <span>• TMDB #{media.tmdb_id}</span>}
+                <span>{media?.genres?.slice(0, 2).join(" • ") || "Cinema Selection"}</span>
+                {media?.year && <span>• {media.year}</span>}
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">

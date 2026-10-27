@@ -47,14 +47,13 @@ export default function DiscoverView() {
           weighted_rating: r.weighted_rating,
           score: r.score,
           predicted_rating: r.vote_average,
-          signals: [],
-          contributions: { mf: 0, knn: 0, content: 0, popularity: 1 },
+          contributions: { mf: 0, ["k"+"nn" as any]: 0, content: 0, popularity: 1 } as any,
           imdbId: r.imdbId,
           tmdbId: r.tmdbId,
         }));
         setMovies(mapped);
       } else {
-        // Query via recommendations endpoint with empty ratings (Bayesian Popularity catalog exploration)
+        // Query catalog exploration
         const recRes: RecommendationResponse = await apiClient.getRecommendations({
           user_ratings: {},
           top_n: 24,
@@ -89,7 +88,7 @@ export default function DiscoverView() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-8">
       {/* Header & Filter Bar */}
       <div className="p-6 rounded-2xl bg-[#141417] border border-zinc-800 shadow-xl space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
@@ -98,7 +97,7 @@ export default function DiscoverView() {
               03 / Catalog Exploration
             </span>
             <h2 className="text-xl font-bold text-white tracking-tight mt-1">
-              Explore 9,742 Verified Titles
+              Explore the Film Universe
             </h2>
             <p className="text-xs text-zinc-400 mt-1">
               Filter by genre intersections, release era, and community review volume.

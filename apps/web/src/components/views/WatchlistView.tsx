@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useStore } from "@/lib/store";
 import { apiClient, WatchlistItem } from "@cinematch/api-client";
+import { surfaceCopy } from "@/copy/en";
 import { Bookmark, Download, Trash2, Edit3, Film, Star, Loader2 } from "lucide-react";
 
 export default function WatchlistView() {
@@ -56,18 +57,18 @@ export default function WatchlistView() {
   const exportUrl = apiClient.getWatchlistExportUrl(userId);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-8">
       {/* Header Bar */}
       <div className="p-6 rounded-2xl bg-[#141417] border border-zinc-800 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="font-mono text-xs font-bold text-amber-500 uppercase tracking-widest">
-            05 / Persistent Collection
+            05 / Personal Lineup
           </span>
           <h2 className="text-xl font-bold text-white tracking-tight mt-1">
-            Personal Watchlist & Curations
+            {surfaceCopy.scenes.s05.heading}
           </h2>
           <p className="text-xs text-zinc-400 mt-1">
-            Stored persistently in SQLite database across tab closures and sessions.
+            {surfaceCopy.scenes.s05.subheading}
           </p>
         </div>
 

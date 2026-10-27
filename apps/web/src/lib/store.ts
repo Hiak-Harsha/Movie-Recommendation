@@ -1,11 +1,13 @@
 import { create } from "zustand";
 
-export type WorkspaceTab = "discover" | "similar" | "foryou" | "watchlist" | "insights";
+export type WorkspaceTab = "discover" | "similar" | "foryou" | "watchlist";
 
 interface CineMatchState {
   // Navigation
   activeTab: WorkspaceTab;
   setActiveTab: (tab: WorkspaceTab) => void;
+  activeScene: string;
+  setActiveScene: (scene: string) => void;
 
   // Active User / Session
   userId: string;
@@ -26,6 +28,15 @@ interface CineMatchState {
   isSearchOpen: boolean;
   setIsSearchOpen: (open: boolean) => void;
 
+  isAboutOpen: boolean;
+  setIsAboutOpen: (open: boolean) => void;
+  aboutTab: string;
+  setAboutTab: (tab: string) => void;
+
+  // Accessibility / Settings
+  reducedMotion: boolean;
+  setReducedMotion: (reduced: boolean) => void;
+
   // Similar Movies Seed
   seedMovieId: number;
   setSeedMovieId: (id: number) => void;
@@ -38,9 +49,11 @@ interface CineMatchState {
 export const useStore = create<CineMatchState>((set) => ({
   activeTab: "foryou",
   setActiveTab: (tab) => set({ activeTab: tab }),
+  activeScene: "s00",
+  setActiveScene: (scene) => set({ activeScene: scene }),
 
-  userId: "guest_default",
-  username: "Guest Explorer",
+  userId: "",
+  username: "Explorer",
   ratingCount: 0,
   watchlistCount: 0,
   selectedDemoUserId: null,
@@ -60,6 +73,14 @@ export const useStore = create<CineMatchState>((set) => ({
 
   isSearchOpen: false,
   setIsSearchOpen: (open) => set({ isSearchOpen: open }),
+
+  isAboutOpen: false,
+  setIsAboutOpen: (open) => set({ isAboutOpen: open }),
+  aboutTab: "howToUse",
+  setAboutTab: (tab) => set({ aboutTab: tab }),
+
+  reducedMotion: false,
+  setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
 
   seedMovieId: 1, // Toy Story default
   setSeedMovieId: (id) => set({ seedMovieId: id }),

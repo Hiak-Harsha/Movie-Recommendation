@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useStore } from "@/lib/store";
 import { apiClient, MovieCard as MovieCardType, RecommendationResponse } from "@cinematch/api-client";
 import MovieCard from "@/components/MovieCard";
+import { surfaceCopy } from "@/copy/en";
 import { Sliders, Sparkles, RefreshCw, Zap, ShieldCheck } from "lucide-react";
 
 export default function ForYouView() {
@@ -64,46 +65,38 @@ export default function ForYouView() {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-8">
       {/* Studio Control Rail */}
       <div className="p-6 rounded-2xl bg-[#141417] border border-zinc-800 shadow-xl space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-bold text-amber-500 uppercase tracking-widest">
-                02 / Real-Time Personalization
+                02 / Personalized Discovery
               </span>
               <span className="text-zinc-600">•</span>
               <span className="text-xs text-zinc-400 font-mono">
-                Active: {username} ({ratingCount} ratings)
+                {ratingCount} films rated
               </span>
             </div>
             <h2 className="text-xl font-bold text-white tracking-tight mt-1">
-              Personalized Recommendations
+              {surfaceCopy.scenes.s03.heading}
             </h2>
             <p className="text-xs text-zinc-400 mt-1 max-w-xl">
-              Recommendations adapt immediately as you rate movies. ALS fold-in solves latent preferences without full model retraining.
+              {surfaceCopy.scenes.s03.subheading}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Cold Start Tier Badge */}
-            <div
-              className={`px-3 py-1.5 rounded-full border text-xs font-mono font-medium flex items-center gap-1.5 ${
-                coldTier === "full_pipeline"
-                  ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-400"
-                  : coldTier === "content_fallback"
-                  ? "bg-cyan-950/40 border-cyan-500/30 text-cyan-400"
-                  : "bg-amber-950/40 border-amber-500/30 text-amber-400"
-              }`}
-            >
+            {/* Taste Calibration Badge */}
+            <div className="px-3 py-1.5 rounded-full border text-xs font-mono font-medium flex items-center gap-1.5 bg-zinc-900 border-zinc-750 text-amber-400">
               <Zap className="w-3.5 h-3.5" />
               <span>
-                {coldTier === "full_pipeline"
-                  ? "Tier 2: Full ALS Fold-In Hybrid"
-                  : coldTier === "content_fallback"
-                  ? "Tier 1: Content Taste Vector + Pop"
-                  : "Tier 0: Bayesian Popularity"}
+                {ratingCount >= 5
+                  ? "Refined Taste Profile"
+                  : ratingCount >= 1
+                  ? "Early Taste Profile"
+                  : "Community Favorites"}
               </span>
             </div>
 
@@ -118,12 +111,12 @@ export default function ForYouView() {
           </div>
         </div>
 
-        {/* Sliders Grid (MMR Diversity, Novelty, Recency, Min Support) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-2">
-          {/* MMR Diversity Slider */}
+        {/* Sliders Grid (Variety, Discovery, Release Era) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+          {/* Genre Variety Slider */}
           <div className="space-y-2">
             <div className="flex justify-between text-xs font-mono">
-              <span className="text-zinc-400">Diversity (MMR $\lambda$)</span>
+              <span className="text-zinc-400">Genre Variety</span>
               <span className="text-amber-400 font-bold">{diversityLambda.toFixed(2)}</span>
             </div>
             <input
@@ -136,14 +129,14 @@ export default function ForYouView() {
               className="w-full accent-amber-500 cursor-pointer"
             />
             <p className="text-[10px] text-zinc-500">
-              Penalizes genre redundancy via Jaccard distance.
+              Balances closely matched films with eclectic surprises.
             </p>
           </div>
 
-          {/* Novelty Boost Slider */}
+          {/* Discovery Style Slider */}
           <div className="space-y-2">
             <div className="flex justify-between text-xs font-mono">
-              <span className="text-zinc-400">Novelty Boost</span>
+              <span className="text-zinc-400">Discovery Style</span>
               <span className="text-amber-400 font-bold">{noveltyBoost.toFixed(2)}</span>
             </div>
             <input
@@ -156,7 +149,7 @@ export default function ForYouView() {
               className="w-full accent-amber-500 cursor-pointer"
             />
             <p className="text-[10px] text-zinc-500">
-              Surfaces high-quality hidden gems over blockbusters.
+              Surfaces high-quality hidden gems over mainstream hits.
             </p>
           </div>
 
@@ -232,13 +225,11 @@ export default function ForYouView() {
         </div>
       </div>
 
-      {/* Latency & Summary Bar */}
+      {/* Summary Bar */}
       <div className="flex flex-wrap items-center justify-between text-xs font-mono text-zinc-500 px-2">
         <p className="truncate max-w-xl">{summary}</p>
         <div className="flex items-center gap-3">
-          <span>Candidates: {recommendations.length}</span>
-          <span>•</span>
-          <span className="text-amber-400 font-semibold">Engine Latency: {latencyMs} ms</span>
+          <span className="text-amber-400 font-semibold">{recommendations.length} films curated</span>
         </div>
       </div>
 

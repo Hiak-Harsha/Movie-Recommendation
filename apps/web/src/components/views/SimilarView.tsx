@@ -44,19 +44,19 @@ export default function SimilarView() {
   }, [fetchSimilar]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-8">
       {/* Seed Selection Bar */}
       <div className="p-6 rounded-2xl bg-[#141417] border border-zinc-800 shadow-xl space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
           <div>
             <span className="font-mono text-xs font-bold text-amber-500 uppercase tracking-widest">
-              04 / Item-to-Item Similarity Graph
+              04 / Film Kinship
             </span>
             <h2 className="text-xl font-bold text-white tracking-tight mt-1">
-              Seed-Based Kinship Discovery
+              Films Similar to Your Favorites
             </h2>
             <p className="text-xs text-zinc-400 mt-1">
-              $O(1)$ precomputed array lookup combining shrunk Item-kNN co-ratings and TF-IDF content vectors.
+              Discover movies sharing themes, era, and tone with your selected film.
             </p>
           </div>
 
@@ -97,10 +97,8 @@ export default function SimilarView() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono text-amber-400 uppercase tracking-widest font-bold">
-                    Active Seed Movie
+                    Active Film Selection
                   </span>
-                  <span className="text-zinc-600">•</span>
-                  <span className="text-xs font-mono text-zinc-400">MovieLens #{seedMovie.movieId}</span>
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-white mt-0.5">
                   {seedMovie.display_title}
@@ -113,12 +111,7 @@ export default function SimilarView() {
 
             <div className="flex items-center gap-3 shrink-0">
               <div className="text-right">
-                <p className="text-[10px] font-mono text-zinc-500">Query Time</p>
-                <p className="text-xs font-mono text-emerald-400 font-bold">{latencyMs} ms</p>
-              </div>
-              <div className="w-px h-8 bg-zinc-800" />
-              <div className="text-right">
-                <p className="text-[10px] font-mono text-zinc-500">Top Matches</p>
+                <p className="text-[10px] font-mono text-zinc-500">Related Titles</p>
                 <p className="text-xs font-mono text-white font-bold">{similarMovies.length}</p>
               </div>
             </div>

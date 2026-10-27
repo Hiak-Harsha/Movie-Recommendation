@@ -1,0 +1,8 @@
+{
+  "selected_model": "Popularity Baseline",
+  "is_hybrid_superior": false,
+  "validation_ndcg_hybrid": 0.0393,
+  "best_single_model": "Popularity Baseline",
+  "validation_ndcg_best_single": 0.0433,
+  "rationale": "Quality Gate Notice: Single model 'Popularity Baseline' (0.0433) achieved highest validation NDCG@10 over Hybrid (0.0393). Shipping 'Popularity Baseline'."
+}

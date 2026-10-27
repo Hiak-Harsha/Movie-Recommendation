@@ -6,7 +6,9 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:copy": "python ../../scripts/check_copy.py",
+    "check:utilities": "python ../../scripts/check_utilities.py"
   },
   "dependencies": {
     "@cinematch/api-client": "file:../../packages/api-client",
@@ -28,11 +30,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "autoprefixer": "^10.4.20",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "postcss": "^8.5.3",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5"
   }
 }

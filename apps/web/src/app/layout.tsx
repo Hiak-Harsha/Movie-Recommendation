@@ -14,8 +14,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CineMatch — Hybrid Movie Recommendation Intelligence",
-  description: "Production movie recommendation engine combining explicit ALS matrix factorization, shrunk Item-kNN, and TF-IDF content vectors with honest statistical evaluation.",
+  title: "CineMatch — Find your next favourite film.",
+  description: "Pick a few movies you love. We'll do the rest.",
 };
 
 export default function RootLayout({

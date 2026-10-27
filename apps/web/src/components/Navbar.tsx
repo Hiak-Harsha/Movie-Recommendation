@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useStore, WorkspaceTab } from "@/lib/store";
 import { apiClient, DemoProfile } from "@cinematch/api-client";
-import { Search, Film, Sparkles, Compass, Bookmark, BarChart2, User as UserIcon, Check } from "lucide-react";
+import { surfaceCopy } from "@/copy/en";
+import { Search, Film, Sparkles, Compass, Bookmark, HelpCircle, Check, User as UserIcon } from "lucide-react";
 
 export default function Navbar() {
   const {
@@ -11,10 +12,10 @@ export default function Navbar() {
     setActiveTab,
     userId,
     username,
-    ratingCount,
     watchlistCount,
     setUser,
     setIsSearchOpen,
+    setIsAboutOpen,
     setToast,
   } = useStore();
 
@@ -22,7 +23,7 @@ export default function Navbar() {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
-    // Initialize guest user session in DB if needed
+    // Initialize session
     const savedUserId = localStorage.getItem("cinematch_user_id");
     apiClient
       .getOrCreateUser(undefined, savedUserId || undefined)
@@ -32,7 +33,7 @@ export default function Navbar() {
       })
       .catch(() => {});
 
-    // Fetch demo profiles for quick user switching
+    // Fetch demo profiles
     apiClient
       .getDemoProfiles()
       .then((profiles) => setDemoProfiles(profiles))
@@ -42,28 +43,27 @@ export default function Navbar() {
   const handleSelectDemo = async (demoUserId: number) => {
     try {
       setShowUserMenu(false);
-      setToast(`Loading demo user #${demoUserId} taste profile...`);
+      setToast(`Loading taste profile...`);
       await apiClient.loadDemoRatings(demoUserId, userId);
       const updated = await apiClient.getUserProfile(userId);
-      setUser(updated.id, `Demo #${demoUserId} Profile`, updated.rating_count, updated.watchlist_count);
-      setToast(`Loaded ${updated.rating_count} real ratings for Demo #${demoUserId}!`);
+      setUser(updated.id, `Demo #${demoUserId}`, updated.rating_count, updated.watchlist_count);
+      setToast(`Loaded picks for Demo #${demoUserId}!`);
     } catch (e: any) {
-      setToast(`Failed to load demo profile: ${e.message}`);
+      setToast(`Failed to load profile: ${e.message}`);
     }
   };
 
   const navItems: { tab: WorkspaceTab; label: string; icon: React.ElementType; count?: number }[] = [
     { tab: "foryou", label: "For You", icon: Sparkles },
     { tab: "discover", label: "Discover", icon: Compass },
-    { tab: "similar", label: "Similar Movies", icon: Film },
-    { tab: "watchlist", label: "Watchlist", icon: Bookmark, count: watchlistCount },
-    { tab: "insights", label: "Model Insights", icon: BarChart2 },
+    { tab: "similar", label: "Similar", icon: Film },
+    { tab: "watchlist", label: surfaceCopy.nav.library, icon: Bookmark, count: watchlistCount },
   ];
 
   return (
     <header className="sticky top-0 z-40 w-full glass-nav transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Brand Wordmark & Status Indicator */}
+        {/* Brand Wordmark */}
         <div className="flex items-center gap-3">
           <div
             onClick={() => setActiveTab("foryou")}
@@ -73,13 +73,8 @@ export default function Navbar() {
               <Film className="w-4 h-4 text-black stroke-[2.5]" />
             </div>
             <span className="font-mono text-lg font-bold tracking-tight text-white group-hover:text-amber-400 transition-colors">
-              CINEMATCH<span className="text-amber-500 text-xs ml-1 font-mono tracking-widest">v2</span>
+              {surfaceCopy.brand.name}
             </span>
-          </div>
-
-          <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-500/20 text-[11px] font-mono text-emerald-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>SERVING ALS HYBRID</span>
           </div>
         </div>
 
@@ -92,7 +87,7 @@ export default function Navbar() {
               <button
                 key={item.tab}
                 onClick={() => setActiveTab(item.tab)}
-                className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+                className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
                   isActive
                     ? "bg-amber-500 text-black font-semibold shadow-md shadow-amber-500/20"
                     : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
@@ -114,7 +109,7 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Right Side Actions: Search & User Switcher */}
+        {/* Right Side Actions: Search, About & Profile */}
         <div className="flex items-center gap-2.5">
           {/* Quick Search Trigger */}
           <button
@@ -122,57 +117,54 @@ export default function Navbar() {
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#18181c] hover:bg-[#222228] border border-white/10 text-xs text-zinc-400 hover:text-zinc-200 transition-all cursor-pointer shadow-sm"
           >
             <Search className="w-3.5 h-3.5 text-zinc-400" />
-            <span className="hidden sm:inline">Search 9.7k movies</span>
+            <span className="hidden sm:inline">{surfaceCopy.nav.searchFilms}</span>
             <kbd className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-[10px] font-mono text-zinc-500">
               /
             </kbd>
           </button>
 
-          {/* User Account / Demo Profile Selector */}
+          {/* About Drawer Trigger */}
+          <button
+            onClick={() => setIsAboutOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#18181c] hover:bg-[#222228] border border-white/10 text-xs text-zinc-400 hover:text-amber-400 transition-all cursor-pointer shadow-sm"
+            title="About CineMatch (?)"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">{surfaceCopy.nav.about}</span>
+          </button>
+
+          {/* User Profile Pill */}
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#18181c] hover:bg-[#222228] border border-white/10 text-xs text-zinc-300 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#18181c] hover:bg-[#222228] border border-white/10 text-xs font-medium text-zinc-300 transition-all cursor-pointer shadow-sm"
             >
-              <UserIcon className="w-3.5 h-3.5 text-amber-400" />
-              <span className="max-w-[100px] truncate font-medium">{username}</span>
-              <span className="px-1.5 py-0.5 rounded bg-zinc-800 font-mono text-[10px] text-zinc-400">
-                {ratingCount}★
-              </span>
+              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-[10px] font-bold text-black font-mono">
+                {username ? username.charAt(0).toUpperCase() : "U"}
+              </div>
+              <span className="max-w-[80px] sm:max-w-[120px] truncate">{username}</span>
             </button>
 
             {/* Dropdown Menu */}
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-72 rounded-xl bg-[#121215] border border-zinc-800 shadow-2xl p-2 z-50">
-                <div className="px-3 py-2 border-b border-zinc-800/80 mb-1">
-                  <p className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">
-                    Switch Taste Profile
-                  </p>
-                  <p className="text-xs text-zinc-300 mt-0.5 font-medium">
-                    Test how recommendations adapt to different real MovieLens user histories.
-                  </p>
+              <div className="absolute right-0 mt-2 w-64 rounded-xl bg-[#18181c] border border-white/10 shadow-2xl p-2 z-50 transition-all">
+                <div className="px-3 py-2 border-b border-white/5">
+                  <p className="text-xs font-semibold text-zinc-200">{username}</p>
+                  <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Taste Profile Active</p>
                 </div>
 
-                <div className="space-y-1">
+                <div className="py-2">
+                  <p className="px-3 text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-1">
+                    Preset Tastes
+                  </p>
                   {demoProfiles.map((p) => (
                     <button
                       key={p.userId}
                       onClick={() => handleSelectDemo(p.userId)}
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-zinc-800/60 transition-colors flex items-center justify-between group"
+                      className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-left rounded-lg text-zinc-300 hover:bg-white/5 hover:text-amber-400 transition-colors cursor-pointer"
                     >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-amber-400 font-semibold">
-                            User #{p.userId}
-                          </span>
-                          <span className="text-[11px] text-zinc-400 font-normal">
-                            ({p.rating_count} ratings)
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-zinc-500 truncate mt-0.5">
-                          {p.label}
-                        </p>
-                      </div>
+                      <span className="truncate">{p.username}</span>
+                      <span className="text-[10px] text-zinc-500 font-mono">#{p.userId}</span>
                     </button>
                   ))}
                 </div>
@@ -180,26 +172,6 @@ export default function Navbar() {
             )}
           </div>
         </div>
-      </div>
-
-      {/* Mobile Nav Bar */}
-      <div className="lg:hidden border-t border-white/5 px-2 py-1.5 flex items-center justify-around bg-[#0e0e11]">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.tab;
-          return (
-            <button
-              key={item.tab}
-              onClick={() => setActiveTab(item.tab)}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg text-[10px] font-medium transition-colors ${
-                isActive ? "text-amber-400" : "text-zinc-500 hover:text-zinc-300"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
       </div>
     </header>
   );
