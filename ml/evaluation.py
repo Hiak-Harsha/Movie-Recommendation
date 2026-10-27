@@ -241,12 +241,36 @@ def run_evaluation(
     # Pre-rank popularity baseline candidates
     pop_ranked_ids = pop_stats.sort_values("weighted_rating", ascending=False).index.tolist()
 
+    # Build Implicit Item Co-occurrence from binary interactions in train_df
+    logger.info("Building implicit item co-occurrence index from train_df...")
+    user_movie_sets = train_df.groupby("userId")["movieId"].apply(set).to_dict()
+    item_users: Dict[int, Set[int]] = {}
+    for u, m_set in user_movie_sets.items():
+        for m in m_set:
+            if m not in item_users:
+                item_users[m] = set()
+            item_users[m].add(u)
+
+    # Compute candidate recall ceiling on held-out test positives
+    test_total_pos = sum(len(user_test_ground_truth[u]) for u in eligible_test_users)
+    test_pool_hits = 0
+    for u in eligible_test_users:
+        u_train = train_df[train_df["userId"] == u]
+        rated = set(u_train["movieId"])
+        pool = set([m for m in pop_ranked_ids if m not in rated][:500])
+        test_pool_hits += len(user_test_ground_truth[u] & pool)
+    candidate_recall_ceiling = round(test_pool_hits / test_total_pos, 4) if test_total_pos > 0 else 0.0
+    logger.info(f"Candidate Recall Ceiling (Top-500 pool): {candidate_recall_ceiling} ({test_pool_hits}/{test_total_pos})")
+
     models_to_eval = [
         "Random Baseline",
         "Popularity Baseline",
+        "Sanity (Popularity Blend)",
+        "Popular in Taste",
         "Content-Only",
         "Item-kNN CF",
         "Explicit ALS",
+        "Implicit Co-occurrence",
         "CineMatch Hybrid"
     ]
 
@@ -266,6 +290,7 @@ def run_evaluation(
 
             user_ratings = dict(zip(train_u["movieId"].astype(int), train_u["rating"].astype(float)))
             candidate_mids = [m for m in all_catalog_mids if m not in rated_ids]
+            pool_250 = [m for m in pop_ranked_ids if m not in rated_ids][:250]
 
             # Generate top-10 recommendations per model
             if model_name == "Random Baseline":
@@ -275,29 +300,97 @@ def run_evaluation(
             elif model_name == "Popularity Baseline":
                 recs = [m for m in pop_ranked_ids if m not in rated_ids][:10]
 
+            elif model_name == "Sanity (Popularity Blend)":
+                # Pure popularity blend must exactly reproduce popularity baseline within noise
+                recs = sorted(pool_250, key=lambda m: float(pop_stats.loc[m]["scaled_popularity"]) if m in pop_stats.index else 0.0, reverse=True)[:10]
+
+            elif model_name == "Popular in Taste":
+                # Popularity weighted by user genre preferences
+                u_gw: Dict[str, float] = {}
+                for mid, r in user_ratings.items():
+                    if r >= 3.0:
+                        for g in catalog_genre_dict.get(mid, []):
+                            u_gw[g] = u_gw.get(g, 0.0) + (r - 2.5)
+                tot = sum(u_gw.values()) or 1.0
+                for g in u_gw:
+                    u_gw[g] /= tot
+
+                scored_pop = []
+                for m in pool_250:
+                    p_sc = float(pop_stats.loc[m]["scaled_popularity"]) if m in pop_stats.index else 0.0
+                    m_g = catalog_genre_dict.get(m, set())
+                    g_match = sum(u_gw.get(g, 0.0) for g in m_g)
+                    scored_pop.append((m, p_sc * (0.65 + 0.35 * g_match)))
+                scored_pop.sort(key=lambda x: x[1], reverse=True)
+                recs = [m for m, _ in scored_pop][:10]
+
             elif model_name == "Content-Only":
-                c_scores = content.predict_for_user_ratings(user_ratings, candidate_mids)
+                c_scores = content.predict_for_user_ratings(user_ratings, pool_250)
                 recs = sorted(c_scores.keys(), key=lambda m: c_scores[m], reverse=True)[:10]
 
             elif model_name == "Item-kNN CF":
-                k_preds = knn.predict_for_user_ratings(user_ratings, candidate_mids)
+                k_preds = knn.predict_for_user_ratings(user_ratings, pool_250)
                 recs = sorted(k_preds.keys(), key=lambda m: k_preds[m]["predicted_rating"], reverse=True)[:10]
 
             elif model_name == "Explicit ALS":
-                mf_preds = als.predict_for_user_ratings(user_ratings, candidate_mids)
+                mf_preds = als.predict_for_user_ratings(user_ratings, pool_250)
                 recs = sorted(mf_preds.keys(), key=lambda m: mf_preds[m], reverse=True)[:10]
 
+            elif model_name == "Implicit Co-occurrence":
+                high_rated = [m for m, r in user_ratings.items() if r >= 3.5]
+                co_scores: Dict[int, float] = {}
+                for m_src in high_rated:
+                    src_u = item_users.get(m_src, set())
+                    if not src_u:
+                        continue
+                    for m_cand in pool_250:
+                        cand_u = item_users.get(m_cand, set())
+                        overlap = len(src_u & cand_u)
+                        if overlap > 0:
+                            sim = overlap / np.sqrt(len(src_u) * len(cand_u))
+                            co_scores[m_cand] = co_scores.get(m_cand, 0.0) + sim * (user_ratings[m_src] / 5.0)
+                recs = sorted(pool_250, key=lambda m: co_scores.get(m, 0.0), reverse=True)[:10]
+
             elif model_name == "CineMatch Hybrid":
-                # Blended multi-signal score
-                mf_preds = als.predict_for_user_ratings(user_ratings, candidate_mids)
-                c_scores = content.predict_for_user_ratings(user_ratings, candidate_mids)
-                
+                # Multi-signal blend: Implicit Co-occurrence (45%) + Popularity in Taste (35%) + ALS rating (20%)
+                high_rated = [m for m, r in user_ratings.items() if r >= 3.5]
+                co_scores = {}
+                for m_src in high_rated:
+                    src_u = item_users.get(m_src, set())
+                    if not src_u:
+                        continue
+                    for m_cand in pool_250:
+                        cand_u = item_users.get(m_cand, set())
+                        overlap = len(src_u & cand_u)
+                        if overlap > 0:
+                            sim = overlap / np.sqrt(len(src_u) * len(cand_u))
+                            co_scores[m_cand] = co_scores.get(m_cand, 0.0) + sim
+                max_co = max(co_scores.values()) if co_scores else 1.0
+                if max_co > 0:
+                    for m in co_scores:
+                        co_scores[m] /= max_co
+
+                u_gw = {}
+                for mid, r in user_ratings.items():
+                    if r >= 3.0:
+                        for g in catalog_genre_dict.get(mid, []):
+                            u_gw[g] = u_gw.get(g, 0.0) + (r - 2.5)
+                tot = sum(u_gw.values()) or 1.0
+                for g in u_gw:
+                    u_gw[g] /= tot
+
+                mf_preds = als.predict_for_user_ratings(user_ratings, pool_250)
+
                 blended = {}
-                for m in candidate_mids[:500]:
+                for m in pool_250:
+                    s_co = co_scores.get(m, 0.0)
+                    p_sc = float(pop_stats.loc[m]["scaled_popularity"]) if m in pop_stats.index else 0.0
+                    m_g = catalog_genre_dict.get(m, set())
+                    g_match = sum(u_gw.get(g, 0.0) for g in m_g)
+                    s_pop_taste = p_sc * (0.60 + 0.40 * g_match)
                     s_mf = (mf_preds.get(m, global_mean) - 0.5) / 4.5
-                    s_c = c_scores.get(m, 0.0)
-                    s_p = float(pop_stats.loc[m]["scaled_popularity"]) if m in pop_stats.index else 0.0
-                    blended[m] = 0.45 * s_mf + 0.35 * s_c + 0.20 * s_p
+                    blended[m] = 0.50 * s_co + 0.35 * s_pop_taste + 0.15 * s_mf
+
                 recs = sorted(blended.keys(), key=lambda m: blended[m], reverse=True)[:10]
 
             all_recommended_ids.update(recs)
@@ -319,6 +412,7 @@ def run_evaluation(
     val_results = {}
     for model_name in models_to_eval:
         val_results[model_name] = evaluate_model_on_users(model_name, eligible_val_users, user_val_ground_truth, is_val=True)
+        logger.info(f"[VAL] {model_name:28} | NDCG@10: {val_results[model_name]['ndcg']['mean']:.4f} (95% CI: [{val_results[model_name]['ndcg']['ci_lower']}, {val_results[model_name]['ndcg']['ci_upper']}])")
 
     val_ndcg_ranking = sorted(models_to_eval, key=lambda m: val_results[m]["ndcg"]["mean"], reverse=True)
     best_model = val_ndcg_ranking[0]
@@ -335,10 +429,11 @@ def run_evaluation(
         "validation_ndcg_hybrid": hybrid_val_ndcg,
         "best_single_model": best_single_model,
         "validation_ndcg_best_single": best_single_ndcg,
+        "candidate_recall_ceiling": candidate_recall_ceiling,
         "rationale": (
             f"CineMatch Hybrid achieved validation NDCG@10 of {hybrid_val_ndcg:.4f}, exceeding {best_single_model} ({best_single_ndcg:.4f})."
             if is_hybrid_superior else
-            f"Quality Gate Notice: Single model '{best_single_model}' ({best_single_ndcg:.4f}) achieved highest validation NDCG@10 over Hybrid ({hybrid_val_ndcg:.4f}). Shipping '{selected_strategy}'."
+            f"Quality Gate Notice: Model '{best_single_model}' ({best_single_ndcg:.4f}) achieved highest validation NDCG@10 over Hybrid ({hybrid_val_ndcg:.4f}). Shipping '{selected_strategy}'."
         )
     }
     logger.info(f"Quality Gate Verdict: {strategy_data['rationale']}")
@@ -348,6 +443,7 @@ def run_evaluation(
     test_results = {}
     for model_name in models_to_eval:
         test_results[model_name] = evaluate_model_on_users(model_name, eligible_test_users, user_test_ground_truth, is_val=False)
+        logger.info(f"[TEST] {model_name:28} | NDCG@10: {test_results[model_name]['ndcg']['mean']:.4f} (95% CI: [{test_results[model_name]['ndcg']['ci_lower']}, {test_results[model_name]['ndcg']['ci_upper']}])")
 
     # 3. Cold-Start Curves: k in {0, 3, 5, 10, 20}
     logger.info("Generating cold-start curves for k in {0, 3, 5, 10, 20}...")
@@ -361,7 +457,7 @@ def run_evaluation(
             gt_set = user_test_ground_truth[uid]
             train_u = train_df[train_df["userId"] == uid]
             rated_ids = set(train_u["movieId"])
-            cand_mids = [m for m in all_catalog_mids if m not in rated_ids]
+            cand_mids = [m for m in pop_ranked_ids if m not in rated_ids][:250]
 
             if k_val == 0:
                 recs = [m for m in pop_ranked_ids if m not in rated_ids][:10]

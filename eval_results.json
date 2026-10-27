@@ -1,7 +1,7 @@
 {
   "dataset_fingerprint": "8aaa97d2eb36dd06",
   "protocol": "per_user_temporal_holdout",
-  "evaluated_at": "2026-10-26 16:42:24 UTC",
+  "evaluated_at": "2026-10-27 04:48:44 UTC",
   "sample_sizes": {
     "train_ratings": 70312,
     "val_ratings": 9818,
@@ -16,12 +16,13 @@
     "pairs_count": 20706
   },
   "strategy": {
-    "selected_model": "Popularity Baseline",
-    "is_hybrid_superior": false,
-    "validation_ndcg_hybrid": 0.0393,
-    "best_single_model": "Popularity Baseline",
-    "validation_ndcg_best_single": 0.0433,
-    "rationale": "Quality Gate Notice: Single model 'Popularity Baseline' (0.0433) achieved highest validation NDCG@10 over Hybrid (0.0393). Shipping 'Popularity Baseline'."
+    "selected_model": "CineMatch Hybrid",
+    "is_hybrid_superior": true,
+    "validation_ndcg_hybrid": 0.0947,
+    "best_single_model": "Implicit Co-occurrence",
+    "validation_ndcg_best_single": 0.0891,
+    "candidate_recall_ceiling": 0.341,
+    "rationale": "CineMatch Hybrid achieved validation NDCG@10 of 0.0947, exceeding Implicit Co-occurrence (0.0891)."
   },
   "validation_metrics": {
     "Random Baseline": {
@@ -92,140 +93,242 @@
       "catalog_coverage": 0.0051,
       "n_evaluated_users": 565
     },
-    "Content-Only": {
+    "Sanity (Popularity Blend)": {
       "ndcg": {
-        "mean": 0.0053,
-        "ci_lower": 0.0022,
-        "ci_upper": 0.0094
+        "mean": 0.0433,
+        "ci_lower": 0.0342,
+        "ci_upper": 0.0551
       },
       "recall": {
-        "mean": 0.0051,
-        "ci_lower": 0.0013,
-        "ci_upper": 0.011
+        "mean": 0.0458,
+        "ci_lower": 0.0348,
+        "ci_upper": 0.0602
       },
       "map": {
-        "mean": 0.0027,
-        "ci_lower": 0.0008,
-        "ci_upper": 0.0055
+        "mean": 0.0234,
+        "ci_lower": 0.0159,
+        "ci_upper": 0.0311
       },
       "hit_rate": {
-        "mean": 0.0265,
-        "ci_lower": 0.0142,
-        "ci_upper": 0.0408
+        "mean": 0.1841,
+        "ci_lower": 0.1522,
+        "ci_upper": 0.2248
       },
       "novelty": {
-        "mean": 15.2897,
-        "ci_lower": 15.1833,
-        "ci_upper": 15.3835
+        "mean": 9.1462,
+        "ci_lower": 9.1185,
+        "ci_upper": 9.1729
       },
       "diversity": {
-        "mean": 0.2258,
-        "ci_lower": 0.2104,
-        "ci_upper": 0.2407
+        "mean": 0.7501,
+        "ci_lower": 0.7468,
+        "ci_upper": 0.7534
       },
-      "catalog_coverage": 0.2449,
+      "catalog_coverage": 0.0051,
+      "n_evaluated_users": 565
+    },
+    "Popular in Taste": {
+      "ndcg": {
+        "mean": 0.0358,
+        "ci_lower": 0.0291,
+        "ci_upper": 0.0452
+      },
+      "recall": {
+        "mean": 0.0399,
+        "ci_lower": 0.03,
+        "ci_upper": 0.0516
+      },
+      "map": {
+        "mean": 0.0162,
+        "ci_lower": 0.0127,
+        "ci_upper": 0.0213
+      },
+      "hit_rate": {
+        "mean": 0.1788,
+        "ci_lower": 0.1469,
+        "ci_upper": 0.2142
+      },
+      "novelty": {
+        "mean": 9.9925,
+        "ci_lower": 9.9618,
+        "ci_upper": 10.0274
+      },
+      "diversity": {
+        "mean": 0.5569,
+        "ci_lower": 0.5489,
+        "ci_upper": 0.5654
+      },
+      "catalog_coverage": 0.0122,
+      "n_evaluated_users": 565
+    },
+    "Content-Only": {
+      "ndcg": {
+        "mean": 0.0154,
+        "ci_lower": 0.0109,
+        "ci_upper": 0.0203
+      },
+      "recall": {
+        "mean": 0.0174,
+        "ci_lower": 0.012,
+        "ci_upper": 0.0229
+      },
+      "map": {
+        "mean": 0.006,
+        "ci_lower": 0.0039,
+        "ci_upper": 0.0085
+      },
+      "hit_rate": {
+        "mean": 0.0973,
+        "ci_lower": 0.0726,
+        "ci_upper": 0.1221
+      },
+      "novelty": {
+        "mean": 11.1163,
+        "ci_lower": 11.053,
+        "ci_upper": 11.1835
+      },
+      "diversity": {
+        "mean": 0.5404,
+        "ci_lower": 0.5291,
+        "ci_upper": 0.5521
+      },
+      "catalog_coverage": 0.0371,
       "n_evaluated_users": 565
     },
     "Item-kNN CF": {
       "ndcg": {
-        "mean": 0.014,
-        "ci_lower": 0.0085,
-        "ci_upper": 0.0207
+        "mean": 0.0347,
+        "ci_lower": 0.0261,
+        "ci_upper": 0.0451
       },
       "recall": {
-        "mean": 0.0155,
-        "ci_lower": 0.0092,
-        "ci_upper": 0.0242
+        "mean": 0.0365,
+        "ci_lower": 0.0264,
+        "ci_upper": 0.0484
       },
       "map": {
-        "mean": 0.008,
-        "ci_lower": 0.004,
-        "ci_upper": 0.0131
+        "mean": 0.0199,
+        "ci_lower": 0.0137,
+        "ci_upper": 0.0272
       },
       "hit_rate": {
-        "mean": 0.0549,
-        "ci_lower": 0.0372,
-        "ci_upper": 0.0762
+        "mean": 0.1381,
+        "ci_lower": 0.1097,
+        "ci_upper": 0.1681
       },
       "novelty": {
-        "mean": 12.8746,
-        "ci_lower": 12.7635,
-        "ci_upper": 13.0065
+        "mean": 10.3758,
+        "ci_lower": 10.2589,
+        "ci_upper": 10.4863
       },
       "diversity": {
-        "mean": 0.754,
-        "ci_lower": 0.7473,
-        "ci_upper": 0.7617
+        "mean": 0.7619,
+        "ci_lower": 0.7566,
+        "ci_upper": 0.7669
       },
-      "catalog_coverage": 0.0581,
+      "catalog_coverage": 0.0272,
       "n_evaluated_users": 565
     },
     "Explicit ALS": {
       "ndcg": {
-        "mean": 0.0363,
-        "ci_lower": 0.0269,
-        "ci_upper": 0.0454
+        "mean": 0.0395,
+        "ci_lower": 0.0306,
+        "ci_upper": 0.0489
       },
       "recall": {
-        "mean": 0.0334,
-        "ci_lower": 0.0242,
-        "ci_upper": 0.0434
+        "mean": 0.0405,
+        "ci_lower": 0.0299,
+        "ci_upper": 0.0522
       },
       "map": {
-        "mean": 0.0189,
-        "ci_lower": 0.0126,
-        "ci_upper": 0.0257
+        "mean": 0.0206,
+        "ci_lower": 0.0146,
+        "ci_upper": 0.0273
       },
       "hit_rate": {
-        "mean": 0.1628,
-        "ci_lower": 0.1362,
-        "ci_upper": 0.1947
+        "mean": 0.1788,
+        "ci_lower": 0.1487,
+        "ci_upper": 0.2142
       },
       "novelty": {
-        "mean": 10.3952,
-        "ci_lower": 10.342,
-        "ci_upper": 10.4569
+        "mean": 10.1381,
+        "ci_lower": 10.0749,
+        "ci_upper": 10.199
       },
       "diversity": {
-        "mean": 0.7831,
-        "ci_lower": 0.777,
-        "ci_upper": 0.789
+        "mean": 0.7616,
+        "ci_lower": 0.7561,
+        "ci_upper": 0.7669
       },
-      "catalog_coverage": 0.0473,
+      "catalog_coverage": 0.0251,
+      "n_evaluated_users": 565
+    },
+    "Implicit Co-occurrence": {
+      "ndcg": {
+        "mean": 0.0891,
+        "ci_lower": 0.077,
+        "ci_upper": 0.1053
+      },
+      "recall": {
+        "mean": 0.1016,
+        "ci_lower": 0.083,
+        "ci_upper": 0.1215
+      },
+      "map": {
+        "mean": 0.0506,
+        "ci_lower": 0.0417,
+        "ci_upper": 0.0628
+      },
+      "hit_rate": {
+        "mean": 0.3292,
+        "ci_lower": 0.2903,
+        "ci_upper": 0.37
+      },
+      "novelty": {
+        "mean": 9.2174,
+        "ci_lower": 9.1856,
+        "ci_upper": 9.2557
+      },
+      "diversity": {
+        "mean": 0.7995,
+        "ci_lower": 0.7956,
+        "ci_upper": 0.8035
+      },
+      "catalog_coverage": 0.0187,
       "n_evaluated_users": 565
     },
     "CineMatch Hybrid": {
       "ndcg": {
-        "mean": 0.0393,
-        "ci_lower": 0.0303,
-        "ci_upper": 0.0486
+        "mean": 0.0947,
+        "ci_lower": 0.0813,
+        "ci_upper": 0.1125
       },
       "recall": {
-        "mean": 0.0432,
-        "ci_lower": 0.0306,
-        "ci_upper": 0.0541
+        "mean": 0.1073,
+        "ci_lower": 0.0876,
+        "ci_upper": 0.1271
       },
       "map": {
-        "mean": 0.0225,
-        "ci_lower": 0.0161,
-        "ci_upper": 0.0297
+        "mean": 0.0538,
+        "ci_lower": 0.0441,
+        "ci_upper": 0.0674
       },
       "hit_rate": {
-        "mean": 0.154,
-        "ci_lower": 0.1256,
-        "ci_upper": 0.1912
+        "mean": 0.3398,
+        "ci_lower": 0.3026,
+        "ci_upper": 0.3806
       },
       "novelty": {
-        "mean": 11.5511,
-        "ci_lower": 11.4739,
-        "ci_upper": 11.6432
+        "mean": 9.1864,
+        "ci_lower": 9.1531,
+        "ci_upper": 9.2289
       },
       "diversity": {
-        "mean": 0.5927,
-        "ci_lower": 0.5765,
-        "ci_upper": 0.6069
+        "mean": 0.766,
+        "ci_lower": 0.7618,
+        "ci_upper": 0.7705
       },
-      "catalog_coverage": 0.033,
+      "catalog_coverage": 0.0187,
       "n_evaluated_users": 565
     }
   },
@@ -298,140 +401,242 @@
       "catalog_coverage": 0.0053,
       "n_evaluated_users": 591
     },
-    "Content-Only": {
+    "Sanity (Popularity Blend)": {
       "ndcg": {
-        "mean": 0.0047,
-        "ci_lower": 0.0024,
-        "ci_upper": 0.007
+        "mean": 0.0596,
+        "ci_lower": 0.0496,
+        "ci_upper": 0.0692
       },
       "recall": {
-        "mean": 0.0018,
-        "ci_lower": 0.0009,
-        "ci_upper": 0.0028
+        "mean": 0.0347,
+        "ci_lower": 0.0275,
+        "ci_upper": 0.041
       },
       "map": {
-        "mean": 0.0017,
-        "ci_lower": 0.0008,
-        "ci_upper": 0.0026
+        "mean": 0.027,
+        "ci_lower": 0.0215,
+        "ci_upper": 0.0324
       },
       "hit_rate": {
-        "mean": 0.0338,
-        "ci_lower": 0.0186,
-        "ci_upper": 0.0508
+        "mean": 0.2876,
+        "ci_lower": 0.2487,
+        "ci_upper": 0.3215
       },
       "novelty": {
-        "mean": 15.33,
-        "ci_lower": 15.2447,
-        "ci_upper": 15.4294
+        "mean": 9.1681,
+        "ci_lower": 9.1375,
+        "ci_upper": 9.1964
       },
       "diversity": {
-        "mean": 0.2298,
-        "ci_lower": 0.2142,
-        "ci_upper": 0.2448
+        "mean": 0.7504,
+        "ci_lower": 0.7471,
+        "ci_upper": 0.7537
       },
-      "catalog_coverage": 0.2589,
+      "catalog_coverage": 0.0053,
+      "n_evaluated_users": 591
+    },
+    "Popular in Taste": {
+      "ndcg": {
+        "mean": 0.0511,
+        "ci_lower": 0.0433,
+        "ci_upper": 0.0596
+      },
+      "recall": {
+        "mean": 0.0313,
+        "ci_lower": 0.0246,
+        "ci_upper": 0.0372
+      },
+      "map": {
+        "mean": 0.0218,
+        "ci_lower": 0.0177,
+        "ci_upper": 0.026
+      },
+      "hit_rate": {
+        "mean": 0.2707,
+        "ci_lower": 0.2318,
+        "ci_upper": 0.3046
+      },
+      "novelty": {
+        "mean": 10.0346,
+        "ci_lower": 9.9999,
+        "ci_upper": 10.0713
+      },
+      "diversity": {
+        "mean": 0.557,
+        "ci_lower": 0.549,
+        "ci_upper": 0.5652
+      },
+      "catalog_coverage": 0.0125,
+      "n_evaluated_users": 591
+    },
+    "Content-Only": {
+      "ndcg": {
+        "mean": 0.0291,
+        "ci_lower": 0.0234,
+        "ci_upper": 0.0344
+      },
+      "recall": {
+        "mean": 0.0208,
+        "ci_lower": 0.0162,
+        "ci_upper": 0.0249
+      },
+      "map": {
+        "mean": 0.0105,
+        "ci_lower": 0.008,
+        "ci_upper": 0.0133
+      },
+      "hit_rate": {
+        "mean": 0.2014,
+        "ci_lower": 0.1692,
+        "ci_upper": 0.2285
+      },
+      "novelty": {
+        "mean": 11.1294,
+        "ci_lower": 11.0722,
+        "ci_upper": 11.1838
+      },
+      "diversity": {
+        "mean": 0.542,
+        "ci_lower": 0.5307,
+        "ci_upper": 0.5544
+      },
+      "catalog_coverage": 0.0379,
       "n_evaluated_users": 591
     },
     "Item-kNN CF": {
       "ndcg": {
-        "mean": 0.013,
-        "ci_lower": 0.0097,
-        "ci_upper": 0.0162
+        "mean": 0.042,
+        "ci_lower": 0.0337,
+        "ci_upper": 0.0503
       },
       "recall": {
-        "mean": 0.0085,
-        "ci_lower": 0.0054,
-        "ci_upper": 0.0118
+        "mean": 0.0231,
+        "ci_lower": 0.0178,
+        "ci_upper": 0.0276
       },
       "map": {
-        "mean": 0.0047,
-        "ci_lower": 0.0033,
-        "ci_upper": 0.0061
+        "mean": 0.0193,
+        "ci_lower": 0.0145,
+        "ci_upper": 0.0241
       },
       "hit_rate": {
-        "mean": 0.0897,
-        "ci_lower": 0.0676,
-        "ci_upper": 0.11
+        "mean": 0.2014,
+        "ci_lower": 0.1726,
+        "ci_upper": 0.2285
       },
       "novelty": {
-        "mean": 12.8809,
-        "ci_lower": 12.7475,
-        "ci_upper": 12.9907
+        "mean": 10.4277,
+        "ci_lower": 10.306,
+        "ci_upper": 10.5507
       },
       "diversity": {
-        "mean": 0.7515,
-        "ci_lower": 0.7447,
-        "ci_upper": 0.7583
+        "mean": 0.7614,
+        "ci_lower": 0.7567,
+        "ci_upper": 0.7664
       },
-      "catalog_coverage": 0.0597,
+      "catalog_coverage": 0.0275,
       "n_evaluated_users": 591
     },
     "Explicit ALS": {
       "ndcg": {
-        "mean": 0.0437,
-        "ci_lower": 0.0362,
-        "ci_upper": 0.05
+        "mean": 0.0456,
+        "ci_lower": 0.0377,
+        "ci_upper": 0.0541
       },
       "recall": {
-        "mean": 0.0254,
-        "ci_lower": 0.021,
-        "ci_upper": 0.0304
+        "mean": 0.0272,
+        "ci_lower": 0.022,
+        "ci_upper": 0.0323
       },
       "map": {
-        "mean": 0.0188,
-        "ci_lower": 0.0142,
-        "ci_upper": 0.0229
+        "mean": 0.0198,
+        "ci_lower": 0.0153,
+        "ci_upper": 0.0244
       },
       "hit_rate": {
         "mean": 0.242,
-        "ci_lower": 0.2063,
-        "ci_upper": 0.2741
+        "ci_lower": 0.2097,
+        "ci_upper": 0.2724
       },
       "novelty": {
-        "mean": 10.4579,
-        "ci_lower": 10.4003,
-        "ci_upper": 10.5112
+        "mean": 10.1834,
+        "ci_lower": 10.1264,
+        "ci_upper": 10.2375
       },
       "diversity": {
-        "mean": 0.7839,
-        "ci_lower": 0.7786,
-        "ci_upper": 0.7892
+        "mean": 0.7616,
+        "ci_lower": 0.7558,
+        "ci_upper": 0.7672
       },
-      "catalog_coverage": 0.0482,
+      "catalog_coverage": 0.026,
+      "n_evaluated_users": 591
+    },
+    "Implicit Co-occurrence": {
+      "ndcg": {
+        "mean": 0.0921,
+        "ci_lower": 0.0808,
+        "ci_upper": 0.1021
+      },
+      "recall": {
+        "mean": 0.0636,
+        "ci_lower": 0.0542,
+        "ci_upper": 0.0729
+      },
+      "map": {
+        "mean": 0.0443,
+        "ci_lower": 0.0372,
+        "ci_upper": 0.0502
+      },
+      "hit_rate": {
+        "mean": 0.4061,
+        "ci_lower": 0.3688,
+        "ci_upper": 0.4434
+      },
+      "novelty": {
+        "mean": 9.224,
+        "ci_lower": 9.1786,
+        "ci_upper": 9.2639
+      },
+      "diversity": {
+        "mean": 0.7985,
+        "ci_lower": 0.7952,
+        "ci_upper": 0.803
+      },
+      "catalog_coverage": 0.0193,
       "n_evaluated_users": 591
     },
     "CineMatch Hybrid": {
       "ndcg": {
-        "mean": 0.0418,
-        "ci_lower": 0.0331,
-        "ci_upper": 0.0502
+        "mean": 0.0982,
+        "ci_lower": 0.0873,
+        "ci_upper": 0.1099
       },
       "recall": {
-        "mean": 0.0304,
-        "ci_lower": 0.0235,
-        "ci_upper": 0.0372
+        "mean": 0.0703,
+        "ci_lower": 0.0615,
+        "ci_upper": 0.0802
       },
       "map": {
-        "mean": 0.0189,
-        "ci_lower": 0.0143,
-        "ci_upper": 0.0237
+        "mean": 0.046,
+        "ci_lower": 0.039,
+        "ci_upper": 0.0528
       },
       "hit_rate": {
-        "mean": 0.2183,
-        "ci_lower": 0.1794,
-        "ci_upper": 0.2437
+        "mean": 0.4349,
+        "ci_lower": 0.3993,
+        "ci_upper": 0.4721
       },
       "novelty": {
-        "mean": 11.6227,
-        "ci_lower": 11.5235,
-        "ci_upper": 11.7079
+        "mean": 9.2078,
+        "ci_lower": 9.1666,
+        "ci_upper": 9.2458
       },
       "diversity": {
-        "mean": 0.5946,
-        "ci_lower": 0.5789,
-        "ci_upper": 0.6117
+        "mean": 0.767,
+        "ci_lower": 0.7623,
+        "ci_upper": 0.7711
       },
-      "catalog_coverage": 0.0336,
+      "catalog_coverage": 0.0201,
       "n_evaluated_users": 591
     }
   },
@@ -443,23 +648,23 @@
     },
     "k_3": {
       "ratings_count": 3,
-      "ndcg_mean": 0.0029,
-      "hit_rate_mean": 0.03
+      "ndcg_mean": 0.0155,
+      "hit_rate_mean": 0.14
     },
     "k_5": {
       "ratings_count": 5,
-      "ndcg_mean": 0.0288,
-      "hit_rate_mean": 0.18
+      "ndcg_mean": 0.029,
+      "hit_rate_mean": 0.16
     },
     "k_10": {
       "ratings_count": 10,
-      "ndcg_mean": 0.0315,
-      "hit_rate_mean": 0.2
+      "ndcg_mean": 0.0333,
+      "hit_rate_mean": 0.21
     },
     "k_20": {
       "ratings_count": 20,
-      "ndcg_mean": 0.0272,
-      "hit_rate_mean": 0.18
+      "ndcg_mean": 0.0287,
+      "hit_rate_mean": 0.2
     }
   }
 }
