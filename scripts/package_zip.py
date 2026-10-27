@@ -48,22 +48,29 @@ def make_clean_zip():
     
     # Verification
     critical_files = [
-        'apps/web/postcss.config.js',
-        'apps/web/tailwind.config.ts',
         'apps/web/src/app/globals.css',
         'apps/web/src/app/page.tsx',
-        'apps/web/src/components/views/ForYouView.tsx',
-        'apps/web/src/components/views/DiscoverView.tsx',
-        'apps/web/src/components/views/SimilarView.tsx',
-        'apps/web/src/components/views/WatchlistView.tsx',
-        'apps/web/src/components/views/InsightsView.tsx',
+        'apps/web/src/app/movie/[id]/page.tsx',
+        'apps/web/src/stage/Stage.tsx',
+        'apps/web/src/stage/Story.tsx',
+        'apps/web/src/stage/Dock.tsx',
+        'apps/web/src/modules/search/Scene.tsx',
+        'apps/web/src/modules/taste/Scene.tsx',
+        'apps/web/src/modules/foryou/Scene.tsx',
+        'apps/web/src/modules/tune/Scene.tsx',
+        'apps/web/src/modules/library/Scene.tsx',
+        'apps/web/src/modules/detail/DetailOverlay.tsx',
+        'apps/web/src/modules/about/AboutDrawer.tsx',
+        'apps/web/src/modules/about/ModelReportTab.tsx',
         'apps/api/main.py',
         'apps/api/engine.py',
-        'ml/als.py',
-        'packages/api-client/dist/index.js',
+        'apps/api/sessions.py',
         'eval_results.json',
+        'strategy.json',
         'README.md',
-        'data/cinematch.db'
+        'Dockerfile.api',
+        'Dockerfile.web',
+        'docker-compose.yml',
     ]
     
     with zipfile.ZipFile(desktop_zip, 'r') as verify_zip:

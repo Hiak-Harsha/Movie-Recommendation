@@ -1,108 +1,198 @@
 "use client";
-
-import React from "react";
+import React, { useEffect } from "react";
 import dynamic from "next/dynamic";
-import { useStore } from "@/lib/store";
-import Navbar from "@/components/Navbar";
-import HeroWordmark from "@/components/HeroWordmark";
-import MarqueeTicker from "@/components/MarqueeTicker";
-import SearchModal from "@/components/SearchModal";
-import MovieDetailModal from "@/components/MovieDetailModal";
-import ForYouView from "@/components/views/ForYouView";
-import DiscoverView from "@/components/views/DiscoverView";
-import SimilarView from "@/components/views/SimilarView";
-import WatchlistView from "@/components/views/WatchlistView";
+import { Film, Search, Sparkles, SlidersHorizontal, Info, EyeOff, RotateCcw } from "lucide-react";
+import { useAppStore } from "@/core/store";
+import { api } from "@/core/client";
 import { surfaceCopy } from "@/copy/en";
-import { Film, CheckCircle2 } from "lucide-react";
+import { LenisProvider } from "@/core/motion/LenisProvider";
+import { Story } from "@/stage";
+import { SearchPanel } from "@/modules/search";
+import { DetailOverlay } from "@/modules/detail";
+import { useOverlapDebugger } from "@/core/motion/overlapDebug";
 
-// Code-split About Drawer so none of it is in the first-load bundle
-const AboutDrawer = dynamic(() => import("@/modules/about/AboutDrawer"), {
+// Code-split About Drawer so zero technical copy or code is in first-load JS bundle
+const AboutDrawer = dynamic(() => import("@/modules/about").then((m) => m.AboutDrawer), {
   ssr: false,
 });
 
-export default function Home() {
-  const { activeTab, setActiveTab, setIsSearchOpen, setIsAboutOpen, setAboutTab, toastMessage } = useStore();
+export default function HomePage() {
+  useOverlapDebugger();
+  const setIsSearchOpen = useAppStore((s) => s.setIsSearchOpen);
+  const setIsAboutOpen = useAppStore((s) => s.setIsAboutOpen);
+  const setAboutTab = useAppStore((s) => s.setAboutTab);
+  const setSession = useAppStore((s) => s.setSession);
+  const reducedMotion = useAppStore((s) => s.reducedMotion);
+  const setReducedMotion = useAppStore((s) => s.setReducedMotion);
 
-  const openAboutSection = (tab: string) => {
+  // Undo Toast state
+  const toast = useAppStore((s) => s.toast);
+  const setToast = useAppStore((s) => s.setToast);
+
+  // Auto-dismiss toast after 5 seconds
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [toast, setToast]);
+
+  // Initialize server-issued session via /api/me
+  useEffect(() => {
+    api.getMe()
+      .then((me) => {
+        setSession({
+          userId: me.user_id,
+          picksCount: me.picks_count,
+          libraryCount: me.library_count,
+          hasPicks: me.has_picks,
+        });
+      })
+      .catch((err) => {
+        console.error("Session fetch failed:", err);
+      });
+  }, [setSession]);
+
+  // Global Keyboard Shortcuts (/ for search, ? for about, Esc for close)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in an input
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA"
+      ) {
+        return;
+      }
+
+      if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || e.key === "/") {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      } else if (e.key === "?") {
+        e.preventDefault();
+        setAboutTab("howToUse");
+        setIsAboutOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setIsSearchOpen, setIsAboutOpen, setAboutTab]);
+
+  const openAbout = (tab: "howToUse" | "howItWorks" | "dataCredits" | "terms" | "modelReport") => {
     setAboutTab(tab);
     setIsAboutOpen(true);
   };
 
+  const jumpToPicks = () => {
+    const el = document.querySelector("#taste");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#0b0b0c] text-zinc-100">
-      {/* Sticky Navigation */}
-      <Navbar />
+    <LenisProvider>
+      <div className="relative min-h-screen bg-[#0b0b0c] text-[#f2efe6] selection:bg-[#f5a524]/30">
+        {/* Skip to Content Accessibility Link */}
+        <a
+          href="#showcase"
+          className="sr-only focus:not-sr-only fixed top-4 left-4 z-50 px-4 py-2 rounded-lg bg-[#f5a524] text-black font-mono text-xs font-bold"
+        >
+          Skip to main cinema showcase
+        </a>
 
-      {/* Hero Presentation */}
-      <HeroWordmark
-        onStartPicking={() => setActiveTab("foryou")}
-        onSearchFilms={() => setIsSearchOpen(true)}
-      />
-
-      {/* Marquee Ticker */}
-      <MarqueeTicker />
-
-      {/* Main Studio Workspace Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {activeTab === "foryou" && <ForYouView />}
-        {activeTab === "discover" && <DiscoverView />}
-        {activeTab === "similar" && <SimilarView />}
-        {activeTab === "watchlist" && <WatchlistView />}
-      </main>
-
-      {/* Global Modals & Drawers */}
-      <SearchModal />
-      <MovieDetailModal />
-      <AboutDrawer />
-
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 border border-amber-500/40 text-amber-300 text-xs font-mono shadow-2xl transition-all">
-          <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
-      {/* Clean Visitor Footer */}
-      <footer className="border-t border-zinc-900 bg-[#0a0a0c] py-12 text-xs text-zinc-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded-md bg-amber-500 flex items-center justify-center">
-              <Film className="w-3.5 h-3.5 text-black" />
+        {/* Minimalist Floating Header */}
+        <header className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-6 py-4 pointer-events-none">
+          {/* Logo */}
+          <div className="pointer-events-auto flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-[#f5a524] flex items-center justify-center shadow-lg shadow-amber-500/20">
+              <Film className="w-4 h-4 text-black" />
             </div>
-            <span className="font-mono font-bold text-zinc-300">
+            <span className="font-mono font-black tracking-widest text-sm text-[#f2efe6]">
               {surfaceCopy.brand.name}
             </span>
-            <span>•</span>
-            <span>{surfaceCopy.brand.tagline}</span>
           </div>
 
-          <div className="flex items-center gap-6">
+          {/* Header Controls */}
+          <nav aria-label="Main Navigation" className="pointer-events-auto flex items-center gap-3">
             <button
-              onClick={() => openAboutSection("howToUse")}
-              className="hover:text-amber-400 transition-colors cursor-pointer"
+              type="button"
+              onClick={jumpToPicks}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono text-[#9a9aa0] hover:text-[#f2efe6] hover:bg-[#121316] border border-transparent hover:border-[#26282e] transition-all cursor-pointer"
             >
-              {surfaceCopy.footer.about}
+              <span>{surfaceCopy.nav.startPicking}</span>
             </button>
-            <button
-              onClick={() => openAboutSection("terms")}
-              className="hover:text-amber-400 transition-colors cursor-pointer"
-            >
-              {surfaceCopy.footer.terms}
-            </button>
-            <button
-              onClick={() => openAboutSection("dataCredits")}
-              className="hover:text-amber-400 transition-colors cursor-pointer"
-            >
-              {surfaceCopy.footer.credits}
-            </button>
-          </div>
-        </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 pt-6 border-t border-zinc-900/60 text-center sm:text-left text-[11px] text-zinc-600">
-          <p>{surfaceCopy.footer.tmdbNotice}</p>
-        </div>
-      </footer>
-    </div>
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono text-[#9a9aa0] hover:text-[#f2efe6] hover:bg-[#121316] border border-transparent hover:border-[#26282e] transition-all cursor-pointer"
+              aria-label="Search films (Press /)"
+            >
+              <Search className="w-3.5 h-3.5 text-[#f5a524]" />
+              <span className="hidden sm:inline">{surfaceCopy.nav.searchFilms}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openAbout("howToUse")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono text-[#9a9aa0] hover:text-[#f2efe6] hover:bg-[#121316] border border-transparent hover:border-[#26282e] transition-all cursor-pointer"
+              aria-label="Open About and Methodology (Press ?)"
+            >
+              <Info className="w-3.5 h-3.5 text-[#f5a524]" />
+              <span>{surfaceCopy.nav.about}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setReducedMotion(!reducedMotion)}
+              title={reducedMotion ? "Enable animations" : "Reduce motion"}
+              className={`p-1.5 rounded-full border transition-colors cursor-pointer ${
+                reducedMotion
+                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                  : "bg-transparent border-transparent text-[#9a9aa0] hover:text-[#f2efe6]"
+              }`}
+              aria-label="Toggle reduced motion"
+            >
+              <EyeOff className="w-3.5 h-3.5" />
+            </button>
+          </nav>
+        </header>
+
+        {/* Pinned 700vh Living Story / Stage */}
+        <main id="main-content">
+          <Story />
+        </main>
+
+        {/* Global Overlays & Modals */}
+        <SearchPanel />
+        <DetailOverlay />
+        <AboutDrawer />
+
+        {/* Undo Toast Notification (Bottom Center, above dock, z-50) */}
+        {toast && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-full bg-[#121316] border border-[#f5a524]/40 text-[#f2efe6] text-xs font-mono shadow-2xl transition-all duration-200"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#f5a524] shrink-0" />
+            <span>{toast.message}</span>
+            {toast.undoAction && (
+              <button
+                type="button"
+                onClick={() => {
+                  toast.undoAction?.();
+                  setToast(null);
+                }}
+                className="flex items-center gap-1 ml-2 px-2.5 py-0.5 rounded-full bg-[#f5a524] text-black font-bold hover:bg-[#e0941c] transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Undo</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </LenisProvider>
   );
 }

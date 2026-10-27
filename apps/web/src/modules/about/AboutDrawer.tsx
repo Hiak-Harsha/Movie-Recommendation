@@ -1,13 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { useStore } from "@/lib/store";
+import { useAppStore } from "@/core/store";
 import { aboutCopy } from "@/copy/about";
 import ModelReportTab from "./ModelReportTab";
 import { X, BookOpen, Cpu, Award, Shield, BarChart3, Download, Trash2, Key } from "lucide-react";
 
 export default function AboutDrawer() {
-  const { isAboutOpen, setIsAboutOpen, aboutTab, setAboutTab, userId, setToast } = useStore();
+  const isAboutOpen = useAppStore((s) => s.isAboutOpen);
+  const setIsAboutOpen = useAppStore((s) => s.setIsAboutOpen);
+  const aboutTab = useAppStore((s) => s.aboutTab);
+  const setAboutTab = useAppStore((s) => s.setAboutTab);
+  const setToast = useAppStore((s) => s.setToast);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
   if (!isAboutOpen) return null;
@@ -21,12 +25,12 @@ export default function AboutDrawer() {
     try {
       const res = await fetch("/api/me", { method: "DELETE" });
       if (res.ok) {
-        setToast("All personal data erased from session.");
+        setToast({ message: "All personal data erased from session." });
         setIsAboutOpen(false);
         window.location.reload();
       }
     } catch (e: any) {
-      setToast("Failed to erase data: " + e.message);
+      setToast({ message: "Failed to erase data: " + e.message });
     }
   };
 
@@ -67,7 +71,7 @@ export default function AboutDrawer() {
             return (
               <button
                 key={tb.id}
-                onClick={() => setAboutTab(tb.id)}
+                onClick={() => setAboutTab(tb.id as any)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                   active
                     ? "bg-amber-500 text-black font-semibold shadow-md"

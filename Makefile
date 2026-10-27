@@ -23,3 +23,7 @@ web:
 
 build-web:
 	cd apps/web && npm run build
+
+audit:
+	python scripts/final_gap_audit.py
+

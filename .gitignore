@@ -29,3 +29,4 @@ artifacts/
 node_modules/
 .next/
 dist/
+test-results/

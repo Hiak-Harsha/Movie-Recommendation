@@ -1,0 +1,1 @@
+export { DetailOverlay } from "./DetailOverlay";

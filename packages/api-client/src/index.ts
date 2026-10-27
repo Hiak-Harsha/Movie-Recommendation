@@ -325,6 +325,10 @@ export class CineMatchClient {
     return this.request<ShowcaseResponse>("/api/showcase");
   }
 
+  async getShowcaseMovies(): Promise<ShowcaseResponse> {
+    return this.getShowcase();
+  }
+
   async getOnboardingPicks(): Promise<OnboardingPicksResponse> {
     return this.request<OnboardingPicksResponse>("/api/onboarding/picks");
   }
