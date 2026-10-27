@@ -15,10 +15,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import httpx
 
+from pathlib import Path
+import json
+import platform
+
 from apps.api.config import api_settings
 from apps.api.database import get_db, init_db
 from apps.api.models import User, Rating, Watchlist, Feedback
 from apps.api.media import fetch_media_details
+from apps.api.sessions import get_current_user, COOKIE_NAME
 from apps.api.schemas import (
     DemoProfile,
     ModelMetaResponse,
@@ -35,18 +40,26 @@ from apps.api.schemas import (
     WatchlistItem,
     FeedbackCreate,
     FeedbackResponse,
-    MediaDetails
+    MediaDetails,
+    MeResponse,
+    ShelfItem,
+    ShelvesResponse,
+    ShowcaseResponse,
+    OnboardingPicksResponse,
+    MovieDetailResponse,
+    AboutResponse
 )
 from apps.api.engine import engine
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Loads model artifacts during startup and initializes database tables."""
+    """Loads model artifacts during startup, loads strategy, and initializes database tables."""
     t0 = time.time()
     try:
         init_db()
         engine.load_artifacts()
+        engine.load_strategy()
     except Exception as e:
         raise RuntimeError(f"Failed to load CineMatch artifacts: {e}") from e
     duration = time.time() - t0
@@ -184,7 +197,7 @@ def get_model_metadata() -> ModelMetaResponse:
         sparsity_percentage=metrics.get("sparsity_percentage", 98.3),
         als_factors=engine.Q.shape[1] if engine.Q is not None else 32,
         blend_coefficients=getattr(engine.blend_ranker, "coefficients", {}),
-        quality_gate_selected_model="Popularity Baseline (Validated Global Benchmark) / CineMatch Hybrid (Personalized)"
+        quality_gate_selected_model=getattr(engine, "active_strategy", "Popularity Baseline")
     )
 
 
@@ -531,3 +544,328 @@ async def get_media_by_tmdb_id(tmdb_id: int, db: Session = Depends(get_db)) -> M
         genres=genres,
         db=db
     )
+
+
+# ==========================================
+# Phase P1: Identity & Visitor Endpoints (/api/me/*)
+# ==========================================
+
+@app.get("/api/me", response_model=MeResponse)
+def get_current_session_info(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> MeResponse:
+    """Returns current visitor session status and interaction counts."""
+    picks_count = db.query(Rating).filter(Rating.user_id == user.id).count()
+    library_count = db.query(Watchlist).filter(Watchlist.user_id == user.id).count()
+    return MeResponse(
+        user_id=user.id,
+        username=user.username,
+        picks_count=picks_count,
+        library_count=library_count,
+        has_picks=picks_count >= 5,
+        created_at=user.created_at.isoformat()
+    )
+
+
+@app.get("/api/me/ratings", response_model=List[RatingItem])
+def get_my_ratings(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> List[RatingItem]:
+    """Retrieve all ratings submitted by active session."""
+    return get_user_ratings(user_id=user.id, db=db)
+
+
+@app.post("/api/me/ratings", response_model=RatingItem)
+def submit_my_rating(
+    body: RatingCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> RatingItem:
+    """Submit or update a rating in active session."""
+    return submit_rating(user_id=user.id, body=body, db=db)
+
+
+@app.delete("/api/me/ratings/{movie_id}")
+def delete_my_rating(
+    movie_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a rating from active session."""
+    return delete_rating(user_id=user.id, movie_id=movie_id, db=db)
+
+
+@app.get("/api/me/watchlist", response_model=List[WatchlistItem])
+def get_my_watchlist(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> List[WatchlistItem]:
+    """Retrieve watchlist movies for active session."""
+    return get_user_watchlist(user_id=user.id, db=db)
+
+
+@app.put("/api/me/watchlist/{movie_id}", response_model=WatchlistItem)
+def add_to_my_watchlist(
+    movie_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> WatchlistItem:
+    """Add a movie to active session's watchlist."""
+    body = WatchlistCreate(movieId=movie_id)
+    return add_to_watchlist(user_id=user.id, body=body, db=db)
+
+
+@app.delete("/api/me/watchlist/{movie_id}")
+def remove_from_my_watchlist(
+    movie_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Remove a movie from active session's watchlist."""
+    return remove_from_watchlist(user_id=user.id, movie_id=movie_id, db=db)
+
+
+@app.get("/api/me/shelves", response_model=ShelvesResponse)
+def get_my_shelves(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> ShelvesResponse:
+    """Returns curated recommendation shelves with structured explanations."""
+    ratings = db.query(Rating).filter(Rating.user_id == user.id).all()
+    user_ratings = {r.movie_id: r.rating for r in ratings}
+    seen_ids = set(user_ratings.keys())
+
+    shelves: List[ShelfItem] = []
+
+    # Shelf 1: Top picks
+    rec_cards, _, _ = engine.get_recommendations(user_ratings=user_ratings, top_n=10)
+    filtered_recs = [c for c in rec_cards if c.movieId not in seen_ids][:8]
+    if filtered_recs:
+        shelves.append(ShelfItem(
+            id="top_picks",
+            title="Top picks for you",
+            reason="Curated to match your active taste profile",
+            movies=filtered_recs
+        ))
+        seen_ids.update(c.movieId for c in filtered_recs)
+
+    # Shelves 2-4: "Because you liked X"
+    high_rated = sorted([r for r in ratings if r.rating >= 4.0], key=lambda r: r.rating, reverse=True)
+    for r in high_rated[:3]:
+        meta = engine.get_movie_metadata(r.movie_id)
+        stitle = meta.get("display_title", meta.get("title", f"Movie #{r.movie_id}"))
+        _, sim_cards = engine.get_similar_movies(r.movie_id, top_n=12)
+        valid_sim = [c for c in sim_cards if c.movieId not in seen_ids][:8]
+        if valid_sim:
+            shelves.append(ShelfItem(
+                id=f"because_liked_{r.movie_id}",
+                title=f"Because you liked {stitle}",
+                reason=f"Shares tone, genre, and community rating patterns with {stitle}",
+                movies=valid_sim
+            ))
+            seen_ids.update(c.movieId for c in valid_sim)
+
+    # Shelf 5: Hidden gems
+    if engine.catalog_df is not None:
+        gems_df = engine.catalog_df[
+            (~engine.catalog_df["movieId"].isin(seen_ids)) &
+            (engine.catalog_df["vote_count"] >= 15) &
+            (engine.catalog_df["vote_count"] <= 120) &
+            (engine.catalog_df["vote_average"] >= 3.8)
+        ].sort_values("weighted_rating", ascending=False)
+        gems_cards = []
+        for mid in gems_df["movieId"].head(8):
+            c = engine.get_movie_card_by_id(int(mid))
+            if c:
+                gems_cards.append(c)
+        if gems_cards:
+            shelves.append(ShelfItem(
+                id="hidden_gems",
+                title="Hidden gems",
+                reason="Critically acclaimed films waiting to be discovered",
+                movies=gems_cards
+            ))
+            seen_ids.update(c.movieId for c in gems_cards)
+
+    # Shelf 6: Popular now
+    if engine.catalog_df is not None:
+        pop_df = engine.catalog_df[
+            (~engine.catalog_df["movieId"].isin(seen_ids)) &
+            (engine.catalog_df["vote_count"] >= 100)
+        ].sort_values("weighted_rating", ascending=False)
+        pop_cards = []
+        for mid in pop_df["movieId"].head(8):
+            c = engine.get_movie_card_by_id(int(mid))
+            if c:
+                pop_cards.append(c)
+        if pop_cards:
+            shelves.append(ShelfItem(
+                id="popular_now",
+                title="Popular right now",
+                reason="Most celebrated films across all moviegoers",
+                movies=pop_cards
+            ))
+
+    return ShelvesResponse(shelves=shelves)
+
+
+@app.get("/api/me/recommendations", response_model=RecommendationResponse)
+def get_my_recommendations(
+    novelty: float = Query(0.05),
+    diversity: float = Query(0.15),
+    recency: float = Query(0.0),
+    genres: Optional[str] = Query(None),
+    decades: Optional[str] = Query(None),
+    top_n: int = Query(20, ge=1, le=50),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> RecommendationResponse:
+    """Ranked recommendations parameterized for the Tune faders."""
+    return get_user_personalized_recommendations(
+        user_id=user.id,
+        top_n=top_n,
+        genres=genres,
+        diversity_lambda=diversity,
+        novelty_boost=novelty,
+        recency_prior=recency,
+        db=db
+    )
+
+
+@app.post("/api/me/events", response_model=FeedbackResponse)
+def record_my_event(
+    body: FeedbackCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> FeedbackResponse:
+    """Record interaction event (impression, click, dismiss)."""
+    return track_feedback(user_id=user.id, body=body, db=db)
+
+
+@app.get("/api/me/export")
+def export_my_data(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Export complete visitor profile and history as JSON."""
+    ratings = db.query(Rating).filter(Rating.user_id == user.id).all()
+    watchlist = db.query(Watchlist).filter(Watchlist.user_id == user.id).all()
+    feedback = db.query(Feedback).filter(Feedback.user_id == user.id).all()
+
+    data = {
+        "user_id": user.id,
+        "created_at": user.created_at.isoformat(),
+        "ratings": [
+            {"movie_id": r.movie_id, "rating": r.rating, "rated_at": r.created_at.isoformat()}
+            for r in ratings
+        ],
+        "watchlist": [
+            {"movie_id": w.movie_id, "notes": w.notes, "added_at": w.created_at.isoformat()}
+            for w in watchlist
+        ],
+        "interactions": [
+            {"movie_id": f.movie_id, "type": f.interaction_type, "timestamp": f.created_at.isoformat()}
+            for f in feedback
+        ]
+    }
+    return Response(content=json.dumps(data, indent=2), media_type="application/json")
+
+
+@app.delete("/api/me")
+def erase_my_data(
+    response: Response,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Erase all user data (ratings, watchlist, events) and clear session cookie."""
+    db.delete(user)
+    db.commit()
+    response.delete_cookie(COOKIE_NAME, path="/")
+    return {"status": "erased", "message": "All session data erased successfully."}
+
+
+@app.get("/api/showcase", response_model=ShowcaseResponse)
+def get_showcase() -> ShowcaseResponse:
+    """Returns 60 diverse, recognizable poster items for hero wall and ticker."""
+    return ShowcaseResponse(movies=engine.get_showcase_movies(limit=60))
+
+
+@app.get("/api/onboarding/picks", response_model=OnboardingPicksResponse)
+def get_onboarding_picks(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> OnboardingPicksResponse:
+    """Returns 18 titles chosen to cover genres and decades with high support."""
+    rated_ids = {r.movie_id for r in db.query(Rating).filter(Rating.user_id == user.id).all()}
+    return OnboardingPicksResponse(movies=engine.get_onboarding_picks(exclude_ids=rated_ids, limit=18))
+
+
+@app.get("/api/movies/{id}", response_model=MovieDetailResponse)
+async def get_movie_detail(
+    id: int,
+    db: Session = Depends(get_db)
+) -> MovieDetailResponse:
+    """Returns full movie details, media assets, cast, providers, and similar IDs."""
+    card = engine.get_movie_card_by_id(id)
+    if not card:
+        raise HTTPException(status_code=404, detail=f"Movie #{id} not found in catalog")
+
+    media = await fetch_media_details(
+        movie_id=id,
+        tmdb_id=card.tmdbId,
+        title=card.title,
+        year=card.year,
+        genres=card.genres,
+        db=db
+    )
+    _, similar_cards = engine.get_similar_movies(id, top_n=6)
+    similar_ids = [c.movieId for c in similar_cards]
+
+    return MovieDetailResponse(movie=card, media=media, similar_ids=similar_ids)
+
+
+@app.get("/api/about", response_model=AboutResponse)
+def get_about_metadata() -> AboutResponse:
+    """Returns generated facts from eval_results.json, strategy.json, and dataset counts."""
+    eval_path = Path("eval_results.json")
+    if not eval_path.exists():
+        eval_path = Path("artifacts/eval_results.json")
+    eval_data: Dict[str, Any] = {}
+    if eval_path.exists():
+        try:
+            with open(eval_path, "r", encoding="utf-8") as f:
+                eval_data = json.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to read eval_results.json: {e}")
+
+    return AboutResponse(
+        dataset={
+            "name": "MovieLens (ml-latest-small)",
+            "citation": "F. Maxwell Harper and Joseph A. Konstan. 2015. The MovieLens Datasets: History and Context. ACM TiiS 5, 4, Article 19.",
+            "clean_ratings": 100836,
+            "clean_users": 610,
+            "clean_movies": len(engine.movie_ids) if engine.is_loaded else 9742,
+            "sparsity_pct": 98.3,
+            "terms": "Non-commercial, educational and research development dataset."
+        },
+        evaluation=eval_data,
+        active_strategy={
+            "strategy": getattr(engine, "active_strategy", "Popularity Baseline"),
+            "data": getattr(engine, "strategy_data", {})
+        },
+        versions={
+            "python": platform.python_version(),
+            "fastapi": "0.115.0",
+            "nextjs": "16.4.3",
+            "scikit_learn": "1.6.1",
+            "numpy": "2.2.3"
+        },
+        licenses={
+            "movielens": "GroupLens Non-Commercial Research License",
+            "tmdb": "Movie metadata and posters provided by The Movie Database (TMDB). This product uses the TMDB API but is not endorsed or certified by TMDB.",
+            "code": "MIT License"
+        }
+    )
+

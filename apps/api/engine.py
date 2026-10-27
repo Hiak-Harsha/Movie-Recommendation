@@ -698,6 +698,128 @@ class ServingEngine:
 
         return cards, cold_tier, summary
 
+    def load_strategy(self):
+        """Loads strategy.json and applies RANKING_STRATEGY setting (F9)."""
+        import os
+        strategy_path = Path("strategy.json")
+        if not strategy_path.exists():
+            # Check artifacts
+            found = list(Path("artifacts").glob("**/strategy.json"))
+            if found:
+                strategy_path = found[0]
+
+        if strategy_path.exists():
+            try:
+                with open(strategy_path, "r", encoding="utf-8") as f:
+                    self.strategy_data = json.load(f)
+            except Exception as e:
+                logger.warning(f"Could not load strategy.json: {e}")
+                self.strategy_data = {"selected_model": "Popularity Baseline"}
+        else:
+            self.strategy_data = {"selected_model": "Popularity Baseline"}
+
+        setting = os.environ.get("RANKING_STRATEGY", "auto").lower()
+        if setting == "popularity":
+            self.active_strategy = "Popularity Baseline"
+        elif setting == "hybrid":
+            self.active_strategy = "CineMatch Hybrid"
+        else:
+            self.active_strategy = self.strategy_data.get("selected_model", "Popularity Baseline")
+        logger.info(f"Loaded ranking strategy: {self.active_strategy} (setting={setting})")
+
+    def get_movie_card_by_id(self, movie_id: int) -> Optional[MovieCard]:
+        """Fetch a single MovieCard by movieId."""
+        if movie_id not in self.movie_to_idx or self.catalog_df is None:
+            return None
+        idx = self.movie_to_idx[movie_id]
+        row = self.catalog_df.iloc[idx]
+        genres = str(row["genres"]).split("|") if row["genres"] else []
+        return MovieCard(
+            movieId=int(movie_id),
+            title=str(row["title"]),
+            display_title=str(row["display_title"]),
+            year=int(row["year"]) if pd.notna(row["year"]) else None,
+            genres=genres,
+            vote_count=int(row["vote_count"]),
+            vote_average=float(row["vote_average"]),
+            weighted_rating=float(row["weighted_rating"]),
+            score=round(float(self.scaled_popularities[idx]), 4),
+            predicted_rating=float(row["vote_average"]),
+            imdbId=f"tt{int(row['imdbId']):07d}" if pd.notna(row.get("imdbId")) else None,
+            tmdbId=int(row["tmdbId"]) if pd.notna(row.get("tmdbId")) else None,
+            poster_url=f"https://image.tmdb.org/t/p/w342{row.get('poster_path')}" if pd.notna(row.get("poster_path")) else None
+        )
+
+    def get_showcase_movies(self, limit: int = 60) -> List[MovieCard]:
+        """Returns 60 diverse, recognizable posters covering genres and decades."""
+        if self.catalog_df is None:
+            return []
+        
+        # Sort catalog by popularity and select diverse genres
+        df = self.catalog_df.copy()
+        df = df[df["vote_count"] >= 30].sort_values("weighted_rating", ascending=False)
+        
+        selected_indices = []
+        seen_titles = set()
+        
+        # Round-robin across major genres for high diversity
+        for genre in ALL_GENRES:
+            g_matches = df[df["genres"].str.contains(genre, case=False, na=False)]
+            for _, r in g_matches.head(4).iterrows():
+                if r["title"] not in seen_titles and len(selected_indices) < limit:
+                    selected_indices.append(int(r["movieId"]))
+                    seen_titles.add(r["title"])
+
+        # Fill remainder with top popular titles
+        for _, r in df.iterrows():
+            if len(selected_indices) >= limit:
+                break
+            if r["title"] not in seen_titles:
+                selected_indices.append(int(r["movieId"]))
+                seen_titles.add(r["title"])
+
+        cards = []
+        for mid in selected_indices[:limit]:
+            card = self.get_movie_card_by_id(mid)
+            if card:
+                cards.append(card)
+        return cards
+
+    def get_onboarding_picks(self, exclude_ids: Set[int] = None, limit: int = 18) -> List[MovieCard]:
+        """Returns 18 diverse titles chosen across genres and decades with vote_count >= 150."""
+        if self.catalog_df is None:
+            return []
+        exclude = exclude_ids or set()
+        df = self.catalog_df[
+            (~self.catalog_df["movieId"].isin(exclude)) & 
+            (self.catalog_df["vote_count"] >= 150)
+        ].sort_values("weighted_rating", ascending=False)
+
+        selected_ids = []
+        genres_target = ["Sci-Fi", "Crime", "Action", "Drama", "Animation", "Comedy", "Thriller", "Adventure", "Romance"]
+        
+        for g in genres_target:
+            g_matches = df[df["genres"].str.contains(g, case=False, na=False)]
+            for _, r in g_matches.head(2).iterrows():
+                mid = int(r["movieId"])
+                if mid not in selected_ids and len(selected_ids) < limit:
+                    selected_ids.append(mid)
+
+        for _, r in df.iterrows():
+            if len(selected_ids) >= limit:
+                break
+            mid = int(r["movieId"])
+            if mid not in selected_ids:
+                selected_ids.append(mid)
+
+        cards = []
+        for mid in selected_ids[:limit]:
+            c = self.get_movie_card_by_id(mid)
+            if c:
+                cards.append(c)
+        return cards
+
 
 # Global Singleton Serving Engine
 engine = ServingEngine()
+

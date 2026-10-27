@@ -185,3 +185,49 @@ class MediaDetails(BaseModel):
     vote_average: Optional[float] = None
     fallback_accent: str = "#f59e0b"
 
+
+# ==========================================
+# Phase P1: Identity & Visitor Schemas
+# ==========================================
+class MeResponse(BaseModel):
+    user_id: str
+    username: str
+    picks_count: int
+    library_count: int
+    has_picks: bool
+    created_at: str
+
+
+class ShelfItem(BaseModel):
+    id: str
+    title: str
+    reason: str
+    movies: List[MovieCard]
+
+
+class ShelvesResponse(BaseModel):
+    shelves: List[ShelfItem]
+
+
+class ShowcaseResponse(BaseModel):
+    movies: List[MovieCard]
+
+
+class OnboardingPicksResponse(BaseModel):
+    movies: List[MovieCard]
+
+
+class MovieDetailResponse(BaseModel):
+    movie: MovieCard
+    media: Optional[MediaDetails] = None
+    similar_ids: List[int] = Field(default_factory=list)
+
+
+class AboutResponse(BaseModel):
+    dataset: Dict[str, Any]
+    evaluation: Dict[str, Any]
+    active_strategy: Dict[str, Any]
+    versions: Dict[str, str]
+    licenses: Dict[str, str]
+
+

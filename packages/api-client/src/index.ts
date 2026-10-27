@@ -15,16 +15,70 @@ export type MediaDetails = components["schemas"]["MediaDetails"];
 export type DemoProfile = components["schemas"]["DemoProfile"];
 export type ModelMetaResponse = components["schemas"]["ModelMetaResponse"];
 
+export interface MeResponse {
+  user_id: string;
+  username: string;
+  picks_count: number;
+  library_count: number;
+  has_picks: boolean;
+  created_at: string;
+}
+
+export interface ShelfItem {
+  id: string;
+  title: string;
+  reason: string;
+  movies: MovieCard[];
+}
+
+export interface ShelvesResponse {
+  shelves: ShelfItem[];
+}
+
+export interface ShowcaseResponse {
+  movies: MovieCard[];
+}
+
+export interface OnboardingPicksResponse {
+  movies: MovieCard[];
+}
+
+export interface MovieDetailResponse {
+  movie: MovieCard;
+  media: MediaDetails;
+  similar_ids: number[];
+}
+
+export interface AboutResponse {
+  dataset: {
+    name: string;
+    citation: string;
+    clean_ratings: number;
+    clean_users: number;
+    clean_movies: number;
+    sparsity_pct: number;
+    terms: string;
+  };
+  evaluation: Record<string, any>;
+  active_strategy: {
+    strategy: string;
+    data: Record<string, any>;
+  };
+  versions: Record<string, string>;
+  licenses: Record<string, string>;
+}
+
 export class CineMatchClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") {
+  constructor(baseUrl: string = process.env.NEXT_PUBLIC_API_URL || "") {
     this.baseUrl = baseUrl.replace(/\/$/, "");
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const res = await fetch(`${this.baseUrl}${path}`, {
       ...options,
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         ...(options.headers || {}),
@@ -189,14 +243,100 @@ export class CineMatchClient {
     return this.request<MediaDetails>(`/api/media/movie/${movieId}`);
   }
 
-  // Model Metadata & Demo Profiles
-  async getModelMeta(): Promise<ModelMetaResponse> {
-    return this.request<ModelMetaResponse>("/api/meta/model");
+  // --- Visitor Session Endpoints (/api/me/*, showcase, onboarding, about) ---
+
+  async getMe(): Promise<MeResponse> {
+    return this.request<MeResponse>("/api/me");
   }
 
-  async getDemoProfiles(): Promise<DemoProfile[]> {
-    return this.request<DemoProfile[]>("/api/meta/demo-profiles");
+  async getMyRatings(): Promise<RatingItem[]> {
+    return this.request<RatingItem[]>("/api/me/ratings");
+  }
+
+  async submitMyRating(movieId: number, rating: number): Promise<RatingItem> {
+    return this.request<RatingItem>("/api/me/ratings", {
+      method: "POST",
+      body: JSON.stringify({ movieId, rating }),
+    });
+  }
+
+  async deleteMyRating(movieId: number): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/api/me/ratings/${movieId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async getMyWatchlist(): Promise<WatchlistItem[]> {
+    return this.request<WatchlistItem[]>("/api/me/watchlist");
+  }
+
+  async addToMyWatchlist(movieId: number): Promise<WatchlistItem> {
+    return this.request<WatchlistItem>(`/api/me/watchlist/${movieId}`, {
+      method: "PUT",
+    });
+  }
+
+  async removeFromMyWatchlist(movieId: number): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/api/me/watchlist/${movieId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async getMyShelves(): Promise<ShelvesResponse> {
+    return this.request<ShelvesResponse>("/api/me/shelves");
+  }
+
+  async getMyRecommendations(filters?: {
+    novelty?: number;
+    diversity?: number;
+    recency?: number;
+    genres?: string;
+    decades?: string;
+    topN?: number;
+  }): Promise<RecommendationResponse> {
+    const params = new URLSearchParams();
+    if (filters?.novelty !== undefined) params.set("novelty", filters.novelty.toString());
+    if (filters?.diversity !== undefined) params.set("diversity", filters.diversity.toString());
+    if (filters?.recency !== undefined) params.set("recency", filters.recency.toString());
+    if (filters?.genres) params.set("genres", filters.genres);
+    if (filters?.decades) params.set("decades", filters.decades);
+    if (filters?.topN !== undefined) params.set("top_n", filters.topN.toString());
+    return this.request<RecommendationResponse>(`/api/me/recommendations?${params.toString()}`);
+  }
+
+  async recordEvent(movieId: number, interactionType: "impression" | "click" | "dismiss"): Promise<{ status: string }> {
+    return this.request<{ status: string }>("/api/me/events", {
+      method: "POST",
+      body: JSON.stringify({ movieId, interaction_type: interactionType }),
+    });
+  }
+
+  getExportDataUrl(): string {
+    return `${this.baseUrl}/api/me/export`;
+  }
+
+  async eraseMyData(): Promise<{ status: string; message: string }> {
+    return this.request<{ status: string; message: string }>("/api/me", {
+      method: "DELETE",
+    });
+  }
+
+  async getShowcase(): Promise<ShowcaseResponse> {
+    return this.request<ShowcaseResponse>("/api/showcase");
+  }
+
+  async getOnboardingPicks(): Promise<OnboardingPicksResponse> {
+    return this.request<OnboardingPicksResponse>("/api/onboarding/picks");
+  }
+
+  async getMovieDetail(id: number): Promise<MovieDetailResponse> {
+    return this.request<MovieDetailResponse>(`/api/movies/${id}`);
+  }
+
+  async getAbout(): Promise<AboutResponse> {
+    return this.request<AboutResponse>("/api/about");
   }
 }
 
 export const apiClient = new CineMatchClient();
+
