@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "build": "node -e \"const fs=require('fs'); if(fs.existsSync('.next')) fs.rmSync('.next', {recursive:true, force:true});\" && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "check:copy": "python ../../scripts/check_copy.py",

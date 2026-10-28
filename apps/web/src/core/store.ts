@@ -1,15 +1,13 @@
 import { create } from "zustand";
 
 export interface CineMatchState {
-  // Navigation & Stage
+  // Navigation & Stage Mode
   activeScene: string;
   activeSceneIndex: number;
-  storyProgress: number; // 0.0 to 1.0
-  isStageMode: boolean;
+  isStageMode: boolean | null; // null during SSR / before mount to avoid layout flash
   reducedMotion: boolean;
 
   setActiveScene: (id: string, index: number) => void;
-  setStoryProgress: (progress: number) => void;
   setIsStageMode: (isStage: boolean) => void;
   setReducedMotion: (reduced: boolean) => void;
 
@@ -36,7 +34,7 @@ export interface CineMatchState {
   selectedMovieId: number | null;
   setSelectedMovieId: (id: number | null) => void;
 
-  // Undo Toast (5-second auto dismiss)
+  // Undo Toast
   toast: { message: string; undoAction?: () => void } | null;
   setToast: (toast: { message: string; undoAction?: () => void } | null) => void;
 }
@@ -44,12 +42,11 @@ export interface CineMatchState {
 export const useAppStore = create<CineMatchState>((set) => ({
   activeScene: "scene00",
   activeSceneIndex: 0,
-  storyProgress: 0,
-  isStageMode: true,
+  isStageMode: null,
   reducedMotion: false,
 
-  setActiveScene: (activeScene, activeSceneIndex) => set({ activeScene, activeSceneIndex }),
-  setStoryProgress: (storyProgress) => set({ storyProgress }),
+  setActiveScene: (activeScene, activeSceneIndex) =>
+    set((state) => (state.activeSceneIndex === activeSceneIndex ? state : { activeScene, activeSceneIndex })),
   setIsStageMode: (isStageMode) => set({ isStageMode }),
   setReducedMotion: (reducedMotion) => set({ reducedMotion }),
 
@@ -61,19 +58,22 @@ export const useAppStore = create<CineMatchState>((set) => ({
   setSession: ({ userId, picksCount, libraryCount, hasPicks }) =>
     set({ userId, picksCount, libraryCount, hasPicks }),
 
-  incrementPicks: () => set((state) => ({
-    picksCount: state.picksCount + 1,
-    hasPicks: state.picksCount + 1 >= 5,
-  })),
+  incrementPicks: () =>
+    set((state) => ({
+      picksCount: state.picksCount + 1,
+      hasPicks: state.picksCount + 1 >= 5,
+    })),
 
-  decrementPicks: () => set((state) => ({
-    picksCount: Math.max(0, state.picksCount - 1),
-    hasPicks: Math.max(0, state.picksCount - 1) >= 5,
-  })),
+  decrementPicks: () =>
+    set((state) => ({
+      picksCount: Math.max(0, state.picksCount - 1),
+      hasPicks: Math.max(0, state.picksCount - 1) >= 5,
+    })),
 
-  updateLibraryCount: (delta) => set((state) => ({
-    libraryCount: Math.max(0, state.libraryCount + delta),
-  })),
+  updateLibraryCount: (delta) =>
+    set((state) => ({
+      libraryCount: Math.max(0, state.libraryCount + delta),
+    })),
 
   isSearchOpen: false,
   setIsSearchOpen: (isSearchOpen) => set({ isSearchOpen }),

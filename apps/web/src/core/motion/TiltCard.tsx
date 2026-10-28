@@ -24,6 +24,8 @@ export const TiltCard: React.FC<TiltCardProps> = ({
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (reducedMotion || !cardRef.current) return;
+    if (typeof window !== "undefined" && window.matchMedia("(hover: none)").matches) return;
+
     const rect = cardRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -61,11 +63,11 @@ export const TiltCard: React.FC<TiltCardProps> = ({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       style={style}
-      className={`relative will-change-transform ${className}`}
+      className={`relative ${className}`}
     >
       {children}
 
-      {/* Moving Glare Overlay */}
+      {/* Moving Glare Overlay (desktop hover only) */}
       {!reducedMotion && (
         <div
           aria-hidden="true"

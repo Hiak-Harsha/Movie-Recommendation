@@ -6,6 +6,8 @@ import { PosterWall } from "./PosterWall";
 import { SceneRail } from "./SceneRail";
 import { Dock } from "./Dock";
 import { FilmGrain } from "../core/motion/FilmGrain";
+import { SceneLayer } from "./SceneLayer";
+import { useSceneTransition } from "./useSceneTransition";
 import { api } from "../core/client";
 import type { MovieCard } from "@cinematch/api-client";
 
@@ -20,8 +22,9 @@ import { ClosingScene } from "./ClosingScene";
 
 export const Stage: React.FC = () => {
   const activeSceneIndex = useAppStore((s) => s.activeSceneIndex);
-  const storyProgress = useAppStore((s) => s.storyProgress);
   const [showcaseMovies, setShowcaseMovies] = useState<MovieCard[]>([]);
+
+  const { visibleIndex, phase, direction } = useSceneTransition(activeSceneIndex);
 
   useEffect(() => {
     let mounted = true;
@@ -40,11 +43,11 @@ export const Stage: React.FC = () => {
     };
   }, []);
 
-  // Compute wall blur: rack focus (0px in scene 0, ramps to 12px in scenes 1-5, dim in 6)
+  // Compute wall blur: rack focus (0px in scene 0, ramps to 10px in scenes 1-5, 8px in scene 6)
   const wallBlur = useMemo(() => {
     if (activeSceneIndex === 0) return 0;
     if (activeSceneIndex === 6) return 8;
-    return 12;
+    return 10;
   }, [activeSceneIndex]);
 
   const activeScene = SCENES[activeSceneIndex] || SCENES[0];
@@ -54,17 +57,41 @@ export const Stage: React.FC = () => {
       className="sticky top-0 h-[100svh] w-full overflow-hidden bg-[#0b0b0c] text-[#f2efe6] flex flex-col justify-between"
       style={{ zIndex: 10 }}
     >
-      {/* Background Poster Wall */}
+      {/* Background Poster Wall (Hardware accelerated, normal-blend scrim) */}
       <PosterWall
         movies={showcaseMovies}
-        progress={storyProgress}
         blurPx={wallBlur}
+        activeSceneIndex={activeSceneIndex}
+      />
+
+      {/* Cinematic Letterbox Bars (Mounted at Stage root, completely retracted outside Scene 00) */}
+      <div
+        aria-hidden="true"
+        data-decor="true"
+        className={`fixed top-0 left-0 right-0 h-[12vh] bg-black origin-top pointer-events-none transition-transform duration-100 ${
+          activeSceneIndex === 0 ? "visible opacity-100" : "hidden opacity-0"
+        }`}
+        style={{
+          zIndex: 25,
+          transform: "scaleY(calc(1 - var(--letterbox, 0)))",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        data-decor="true"
+        className={`fixed bottom-0 left-0 right-0 h-[12vh] bg-black origin-bottom pointer-events-none transition-transform duration-100 ${
+          activeSceneIndex === 0 ? "visible opacity-100" : "hidden opacity-0"
+        }`}
+        style={{
+          zIndex: 25,
+          transform: "scaleY(calc(1 - var(--letterbox, 0)))",
+        }}
       />
 
       {/* Subtle Analog Film Grain Overlay */}
       <FilmGrain />
 
-      {/* Screen Reader Polite Live Region */}
+      {/* Screen Reader Live Region */}
       <div
         className="sr-only"
         role="status"
@@ -74,104 +101,48 @@ export const Stage: React.FC = () => {
         {`Scene ${activeScene.number}: ${activeScene.label}`}
       </div>
 
-      {/* Left Pinned Scene Rail (Desktop) */}
+      {/* Left Pinned Scene Rail (Desktop only, z-index 20) */}
       <SceneRail />
 
-      {/* Center Stage Workspace Slots (All mounted to preserve state, inert when inactive) */}
-      <div className="stage-slot-container relative z-10 w-full h-full">
+      {/* Dedicated Scene Viewport (Section 4.2) */}
+      <div className="scene-viewport">
         {/* Scene 00: Hero Showcase */}
-        <div
-          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
-            activeSceneIndex === 0
-              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
-              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
-          }`}
-          aria-hidden={activeSceneIndex !== 0}
-          inert={activeSceneIndex !== 0}
-        >
-          <HeroScene progress={storyProgress} />
-        </div>
+        <SceneLayer index={0} visibleIndex={visibleIndex} phase={phase} direction={direction}>
+          <HeroScene />
+        </SceneLayer>
 
         {/* Scene 01: Search */}
-        <div
-          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
-            activeSceneIndex === 1
-              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
-              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
-          }`}
-          aria-hidden={activeSceneIndex !== 1}
-          inert={activeSceneIndex !== 1}
-        >
+        <SceneLayer index={1} visibleIndex={visibleIndex} phase={phase} direction={direction}>
           <SearchScene />
-        </div>
+        </SceneLayer>
 
         {/* Scene 02: Taste Grid */}
-        <div
-          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
-            activeSceneIndex === 2
-              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
-              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
-          }`}
-          aria-hidden={activeSceneIndex !== 2}
-          inert={activeSceneIndex !== 2}
-        >
+        <SceneLayer index={2} visibleIndex={visibleIndex} phase={phase} direction={direction}>
           <TasteScene />
-        </div>
+        </SceneLayer>
 
         {/* Scene 03: For You Curated Shelves */}
-        <div
-          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
-            activeSceneIndex === 3
-              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
-              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
-          }`}
-          aria-hidden={activeSceneIndex !== 3}
-          inert={activeSceneIndex !== 3}
-        >
+        <SceneLayer index={3} visibleIndex={visibleIndex} phase={phase} direction={direction}>
           <ForYouScene />
-        </div>
+        </SceneLayer>
 
         {/* Scene 04: Tune Faders */}
-        <div
-          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
-            activeSceneIndex === 4
-              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
-              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
-          }`}
-          aria-hidden={activeSceneIndex !== 4}
-          inert={activeSceneIndex !== 4}
-        >
+        <SceneLayer index={4} visibleIndex={visibleIndex} phase={phase} direction={direction}>
           <TuneScene />
-        </div>
+        </SceneLayer>
 
         {/* Scene 05: Library Tickets */}
-        <div
-          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
-            activeSceneIndex === 5
-              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
-              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
-          }`}
-          aria-hidden={activeSceneIndex !== 5}
-          inert={activeSceneIndex !== 5}
-        >
+        <SceneLayer index={5} visibleIndex={visibleIndex} phase={phase} direction={direction}>
           <LibraryScene />
-        </div>
+        </SceneLayer>
 
         {/* Scene 06: Closing & Credits */}
-        <div
-          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
-            activeSceneIndex === 6
-              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
-              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
-          }`}
-          aria-hidden={activeSceneIndex !== 6}
-          inert={activeSceneIndex !== 6}
-        >
+        <SceneLayer index={6} visibleIndex={visibleIndex} phase={phase} direction={direction}>
           <ClosingScene />
-        </div>
+        </SceneLayer>
       </div>
 
-      {/* Floating Navigation Dock */}
+      {/* Floating Navigation Dock (z-index 30) */}
       <Dock />
     </div>
   );

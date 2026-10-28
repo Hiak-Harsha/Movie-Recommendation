@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Image from "next/image";
-import { Bookmark, Star, Check } from "lucide-react";
+import { Bookmark, Star, Check, X } from "lucide-react";
 import { TiltCard } from "./motion/TiltCard";
 import { ProceduralPoster } from "./motion/ProceduralPoster";
 import { useAppStore } from "./store";
@@ -13,6 +13,7 @@ interface MoviePosterCardProps {
   badge?: string;
   reason?: string;
   onSelect?: () => void;
+  onDismiss?: () => void;
   className?: string;
 }
 
@@ -21,6 +22,7 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
   badge,
   reason,
   onSelect,
+  onDismiss,
   className = "",
 }) => {
   const [imageError, setImageError] = useState(false);
@@ -69,7 +71,7 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
         });
       }
     } catch {
-      // Revert optimistic state
+      // Revert optimistic state on failure
       setIsSaved((prev) => !prev);
     }
   };
@@ -84,7 +86,7 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
         message: `Rated ${movie.display_title || movie.title} ${stars} stars`,
       });
     } catch (err) {
-      console.error(err);
+      console.error("Failed to submit rating:", err);
     }
   };
 
@@ -95,13 +97,24 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
     : null;
 
   return (
-    <div className={`group flex flex-col w-full max-w-[220px] select-none ${className}`}>
-      {/* 2:3 Portrait Poster Box with Scrim and Badge */}
-      <TiltCard className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-[#121316] border border-[#26282e] shadow-md group-hover:border-[#f5a524]/60 transition-colors">
-        <button
-          type="button"
+    <div
+      data-card="movie-poster"
+      className={`group flex flex-col w-full max-w-[220px] select-none ${className}`}
+    >
+      {/* 2:3 Portrait Poster Box with Scrim and Valid HTML Hierarchy */}
+      <TiltCard className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-[#121316] border border-[#26282e] shadow-md group-hover:border-[#f5a524]/60 transition-colors relative">
+        {/* Poster Image / Clickable View Details Area */}
+        <div
+          role="button"
+          tabIndex={0}
           onClick={handleCardClick}
-          className="w-full h-full cursor-pointer relative block text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f5a524]"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleCardClick();
+            }
+          }}
+          className="w-full h-full cursor-pointer relative block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f5a524]"
           aria-label={`View details for ${movie.display_title || movie.title}`}
         >
           {posterUrl && !imageError ? (
@@ -113,6 +126,7 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
               className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
               onError={() => setImageError(true)}
               loading="lazy"
+              decoding="async"
             />
           ) : (
             <ProceduralPoster
@@ -127,40 +141,52 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
           {badge && (
             <div
               aria-label={badge}
-              className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-[10px] font-mono tracking-wider uppercase font-semibold bg-[#0b0b0c]/80 backdrop-blur-sm text-[#f5a524] border border-[#f5a524]/30"
+              className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-[10px] font-mono tracking-wider uppercase font-semibold bg-[#0b0b0c]/85 backdrop-blur-sm text-[#f5a524] border border-[#f5a524]/30"
             >
               {badge}
             </div>
           )}
+        </div>
 
-          {/* Quick Save Pill on Poster */}
-          <span
-            role="button"
-            tabIndex={0}
+        {/* Action Controls Positioned on Poster (Not Nested inside a Button!) */}
+        <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5">
+          {/* Dismiss button if supported (For You shelf) */}
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDismiss();
+              }}
+              className="p-1.5 rounded-full bg-[#0b0b0c]/80 text-[#9a9aa0] hover:text-[#f2efe6] hover:bg-black/95 transition-all opacity-80 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-[#f5a524]"
+              aria-label="Dismiss recommendation"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Single Clear Save Control Pill */}
+          <button
+            type="button"
             onClick={handleSaveToggle}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleSaveToggle(e as unknown as React.MouseEvent);
-              }
-            }}
-            className={`absolute top-2 right-2 z-10 p-1.5 rounded-full backdrop-blur-md transition-all cursor-pointer ${
+            className={`p-1.5 rounded-full backdrop-blur-md transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f5a524] ${
               isSaved
                 ? "bg-[#f5a524] text-[#0b0b0c]"
-                : "bg-[#0b0b0c]/70 text-[#f2efe6] hover:bg-[#f5a524] hover:text-[#0b0b0c] opacity-80 group-hover:opacity-100"
+                : "bg-[#0b0b0c]/80 text-[#f2efe6] hover:bg-[#f5a524] hover:text-[#0b0b0c] opacity-90 group-hover:opacity-100"
             }`}
-            aria-label={isSaved ? "Remove from watchlist" : "Save to watchlist"}
+            aria-label={isSaved ? "Remove from library" : "Save to library"}
           >
             {isSaved ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : <Bookmark className="w-3.5 h-3.5" />}
-          </span>
-        </button>
+          </button>
+        </div>
       </TiltCard>
 
       {/* Reserved Typography & Metadata Area (Below poster, never overlapping) */}
-      <div className="pt-2.5 flex flex-col gap-1">
+      <div className="pt-2 flex flex-col gap-1.5">
         <h3
           title={movie.display_title || movie.title}
-          className="text-xs font-semibold text-[#f2efe6] line-clamp-2 leading-tight group-hover:text-[#f5a524] transition-colors"
+          onClick={handleCardClick}
+          className="text-xs font-semibold text-[#f2efe6] line-clamp-1 leading-tight group-hover:text-[#f5a524] transition-colors cursor-pointer"
         >
           {movie.display_title || movie.title}
         </h3>
@@ -182,7 +208,7 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
           </p>
         )}
 
-        {/* Reserved Action Strip: Star rating on card */}
+        {/* Accessible Star Rating Group with Touch Targets */}
         <div className="flex items-center justify-between pt-1 border-t border-[#26282e]/40">
           <div className="flex items-center gap-0.5" role="group" aria-label="Rate movie">
             {[1, 2, 3, 4, 5].map((s) => (
@@ -190,11 +216,11 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
                 key={s}
                 type="button"
                 onClick={(e) => handleRate(s, e)}
-                className="p-0.5 text-[#9a9aa0] hover:text-[#f5a524] transition-colors focus:outline-none focus:text-[#f5a524]"
+                className="p-1 text-[#9a9aa0] hover:text-[#f5a524] transition-colors focus:outline-none focus-visible:text-[#f5a524] cursor-pointer"
                 aria-label={`Rate ${s} stars`}
               >
                 <Star
-                  className={`w-3 h-3 ${
+                  className={`w-3.5 h-3.5 ${
                     activeRating && activeRating >= s
                       ? "fill-[#f5a524] text-[#f5a524]"
                       : "text-current"
@@ -204,13 +230,9 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={handleSaveToggle}
-            className="text-[10px] font-mono uppercase tracking-wider text-[#9a9aa0] hover:text-[#f2efe6] transition-colors"
-          >
-            {isSaved ? "Saved" : "Save"}
-          </button>
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[#9a9aa0]">
+            {isSaved ? "Saved" : ""}
+          </span>
         </div>
       </div>
     </div>

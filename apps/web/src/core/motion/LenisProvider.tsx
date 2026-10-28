@@ -9,6 +9,34 @@ if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
 
+// Module-level pointer to active Lenis instance for seamless scrollToScene access
+let activeLenis: Lenis | null = null;
+
+export function getActiveLenis(): Lenis | null {
+  return activeLenis;
+}
+
+/**
+ * Universal Smooth Scroll to Scene Helper (Section 3.3)
+ * Replaces every ad-hoc scrollIntoView across the application.
+ */
+export function scrollToScene(target: string | HTMLElement, immediate = false) {
+  if (typeof window === "undefined") return;
+
+  const el = typeof target === "string" ? document.querySelector(target) : target;
+  if (!el) return;
+
+  if (activeLenis && !immediate) {
+    activeLenis.scrollTo(el as HTMLElement, {
+      duration: 1.0,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      lock: true,
+    });
+  } else {
+    el.scrollIntoView({ behavior: immediate ? "auto" : "smooth", block: "start" });
+  }
+}
+
 export const LenisProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const lenisRef = useRef<Lenis | null>(null);
   const isAboutOpen = useAppStore((s) => s.isAboutOpen);
@@ -17,17 +45,26 @@ export const LenisProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const reducedMotion = useAppStore((s) => s.reducedMotion);
 
   useEffect(() => {
-    if (reducedMotion) return;
+    if (reducedMotion) {
+      if (activeLenis) {
+        activeLenis.destroy();
+        activeLenis = null;
+      }
+      return;
+    }
 
+    // Spec: lerp: 0.10, wheelMultiplier: 0.90, sync with GSAP ticker
     const lenis = new Lenis({
-      duration: 1.1,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      lerp: 0.1,
+      wheelMultiplier: 0.9,
       orientation: "vertical",
       gestureOrientation: "vertical",
       smoothWheel: true,
+      autoRaf: false,
     });
 
     lenisRef.current = lenis;
+    activeLenis = lenis;
 
     lenis.on("scroll", ScrollTrigger.update);
 
@@ -40,28 +77,29 @@ export const LenisProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => {
       gsap.ticker.remove(rafTicker);
+      // Restore GSAP default lagSmoothing on cleanup
+      gsap.ticker.lagSmoothing(500, 33);
       lenis.destroy();
       lenisRef.current = null;
+      activeLenis = null;
     };
   }, [reducedMotion]);
 
-  // Pause smooth scroll when modals/drawers are open to prevent background scrolling
+  // Pause smooth scroll and lock body when modals/drawers are open
   useEffect(() => {
     if (!lenisRef.current) return;
     if (isAboutOpen || isSearchOpen || selectedMovieId !== null) {
       lenisRef.current.stop();
+      document.documentElement.style.overflow = "hidden";
+      document.body.setAttribute("data-lenis-prevent", "true");
     } else {
       lenisRef.current.start();
+      document.documentElement.style.overflow = "";
+      document.body.removeAttribute("data-lenis-prevent");
     }
   }, [isAboutOpen, isSearchOpen, selectedMovieId]);
 
   return <>{children}</>;
 };
 
-export function scrollToHash(hash: string) {
-  if (typeof window === "undefined") return;
-  const target = document.querySelector(hash);
-  if (target) {
-    target.scrollIntoView({ behavior: "smooth" });
-  }
-}
+export const scrollToHash = scrollToScene;

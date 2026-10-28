@@ -15,17 +15,23 @@ export const SearchPanel: React.FC = () => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const handleClose = () => {
     setIsSearchOpen(false);
     setQuery("");
     setResults([]);
+    // Restore focus to original trigger
+    if (previousFocusRef.current) {
+      previousFocusRef.current.focus();
+    }
   };
 
-  // Focus input automatically on open
+  // Capture trigger focus and focus input automatically on open
   useEffect(() => {
     if (isSearchOpen) {
-      const timer = setTimeout(() => inputRef.current?.focus(), 50);
+      previousFocusRef.current = document.activeElement as HTMLElement | null;
+      const timer = setTimeout(() => inputRef.current?.focus(), 60);
       return () => clearTimeout(timer);
     }
   }, [isSearchOpen]);
@@ -77,17 +83,18 @@ export const SearchPanel: React.FC = () => {
       role="dialog"
       aria-modal="true"
       aria-label="Search movies"
-      className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-[#0b0b0c]/80 backdrop-blur-md"
+      className="fixed inset-0 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-[#0b0b0c]/85 backdrop-blur-md transition-opacity duration-200"
+      style={{ zIndex: 60 }}
       onClick={handleClose}
       onKeyDown={handleKeyDown}
     >
       <div
-        className="relative w-full max-w-xl rounded-2xl bg-[#121316] border border-[#26282e] shadow-2xl overflow-hidden flex flex-col max-h-[75vh]"
+        className="relative w-full max-w-xl rounded-2xl bg-[#121316] border border-[#26282e] shadow-2xl overflow-hidden flex flex-col max-h-[75vh] transition-all duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#26282e]">
-          <Search className="w-5 h-5 text-[#f5a524]" />
+          <Search className="w-5 h-5 text-[#f5a524] shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -108,12 +115,20 @@ export const SearchPanel: React.FC = () => {
                 setQuery("");
                 setResults([]);
               }}
-              className="p-1 rounded text-[#9a9aa0] hover:text-[#f2efe6]"
+              className="p-1 rounded text-[#9a9aa0] hover:text-[#f2efe6] cursor-pointer"
               aria-label="Clear search input"
             >
               <X className="w-4 h-4" />
             </button>
           )}
+          <button
+            type="button"
+            onClick={handleClose}
+            className="p-1 rounded text-[#9a9aa0] hover:text-[#f2efe6] cursor-pointer ml-1"
+            aria-label="Close search"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Results List */}
@@ -146,8 +161,8 @@ export const SearchPanel: React.FC = () => {
                     : "text-[#f2efe6] hover:bg-[#26282e]/50"
                 }`}
               >
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs sm:text-sm font-semibold">
+                <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+                  <span className="text-xs sm:text-sm font-semibold truncate">
                     {item.display_title || item.title}
                   </span>
                   <span className="text-[11px] font-mono text-[#9a9aa0]">
@@ -156,7 +171,7 @@ export const SearchPanel: React.FC = () => {
                 </div>
 
                 {item.vote_average ? (
-                  <span className="flex items-center gap-1 font-mono text-xs text-[#f5a524]">
+                  <span className="flex items-center gap-1 font-mono text-xs text-[#f5a524] shrink-0">
                     <Star className="w-3 h-3 fill-current" />
                     {item.vote_average.toFixed(1)}
                   </span>

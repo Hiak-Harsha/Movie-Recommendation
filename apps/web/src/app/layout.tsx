@@ -1,6 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Providers from "@/components/Providers";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  themeColor: "#0b0b0c",
+  colorScheme: "dark",
+  viewportFit: "cover",
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: "CineMatch — Find your next favourite film.",

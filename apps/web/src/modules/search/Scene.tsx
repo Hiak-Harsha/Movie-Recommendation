@@ -14,13 +14,22 @@ const SAMPLE_TITLES = [
   "Alien",
 ];
 
-export const SearchScene: React.FC<{ progress?: number }> = () => {
+export const SearchScene: React.FC = () => {
   const setIsSearchOpen = useAppStore((s) => s.setIsSearchOpen);
-  const [typedTitle, setTypedTitle] = useState("");
+  const activeSceneIndex = useAppStore((s) => s.activeSceneIndex);
+  const reducedMotion = useAppStore((s) => s.reducedMotion);
+
+  const [typedTitle, setTypedTitle] = useState(SAMPLE_TITLES[0]);
   const [titleIdx, setTitleIdx] = useState(0);
 
-  // Typing effect cycling real movie titles
+  const isActive = activeSceneIndex === 1;
+
+  // Typing effect cycling real movie titles (pauses when scene is inactive or reduced motion)
   useEffect(() => {
+    if (!isActive || reducedMotion) {
+      return;
+    }
+
     const target = SAMPLE_TITLES[titleIdx % SAMPLE_TITLES.length];
     let charIdx = 0;
 
@@ -29,19 +38,20 @@ export const SearchScene: React.FC<{ progress?: number }> = () => {
       setTypedTitle(target.slice(0, charIdx));
       if (charIdx >= target.length) {
         clearInterval(interval);
-        setTimeout(() => {
+        const timeout = setTimeout(() => {
           setTitleIdx((prev) => prev + 1);
         }, 1800);
+        return () => clearTimeout(timeout);
       }
     }, 65);
 
     return () => clearInterval(interval);
-  }, [titleIdx]);
+  }, [titleIdx, isActive, reducedMotion]);
 
   return (
-    <div className="relative w-full max-w-2xl mx-auto flex flex-col items-center justify-center text-center px-4">
+    <div className="relative w-full max-w-2xl mx-auto flex flex-col items-center justify-center text-center px-4 my-auto select-none">
       {/* Projector Light Cone */}
-      <ProjectorBeam active={true} />
+      <ProjectorBeam active={isActive} />
 
       <div className="relative z-10 w-full flex flex-col items-center gap-6">
         <div className="flex flex-col gap-2">
@@ -51,7 +61,7 @@ export const SearchScene: React.FC<{ progress?: number }> = () => {
           <h2 className="text-fluid-h2 font-display font-bold text-[#f2efe6] tracking-tight">
             Looking for something specific?
           </h2>
-          <p className="text-sm text-[#9a9aa0] max-w-md mx-auto">
+          <p className="text-sm text-[#9a9aa0] max-w-md mx-auto text-fluid-body">
             Find any title across ten thousand films. Typo-tolerant with instant previews.
           </p>
         </div>
@@ -60,18 +70,20 @@ export const SearchScene: React.FC<{ progress?: number }> = () => {
         <button
           type="button"
           onClick={() => setIsSearchOpen(true)}
-          className="w-full flex items-center justify-between px-5 py-4 rounded-xl bg-[#121316]/90 border border-[#26282e] hover:border-[#f5a524]/60 shadow-2xl backdrop-blur-md transition-all text-left group focus:outline-none focus:ring-2 focus:ring-[#f5a524]"
+          className="w-full flex items-center justify-between px-5 py-4 rounded-xl bg-[#121316]/95 border border-[#26282e] hover:border-[#f5a524]/60 shadow-2xl backdrop-blur-md transition-all text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f5a524] cursor-pointer"
           aria-label="Open film search modal"
         >
-          <div className="flex items-center gap-3">
-            <Search className="w-5 h-5 text-[#f5a524] group-hover:scale-110 transition-transform" />
-            <span className="text-sm sm:text-base text-[#9a9aa0] font-medium">
+          <div className="flex items-center gap-3 overflow-hidden min-w-0">
+            <Search className="w-5 h-5 text-[#f5a524] group-hover:scale-110 transition-transform shrink-0" />
+            <span className="text-sm sm:text-base text-[#9a9aa0] font-medium truncate">
               Try searching <span className="text-[#f2efe6] font-semibold">&ldquo;{typedTitle}&rdquo;</span>
-              <span className="inline-block w-1.5 h-4 ml-0.5 bg-[#f5a524] animate-pulse align-middle" />
+              {!reducedMotion && (
+                <span className="inline-block w-1.5 h-4 ml-0.5 bg-[#f5a524] animate-pulse align-middle" />
+              )}
             </span>
           </div>
 
-          <div className="flex items-center gap-1 font-mono text-[11px] text-[#9a9aa0] bg-[#26282e]/60 px-2.5 py-1 rounded-md">
+          <div className="hidden sm:flex items-center gap-1 font-mono text-[11px] text-[#9a9aa0] bg-[#26282e]/60 px-2.5 py-1 rounded-md shrink-0">
             <span>Press</span>
             <kbd className="text-[#f2efe6] font-bold">/</kbd>
           </div>

@@ -1,6 +1,5 @@
 "use client";
-
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAppStore } from "@/core/store";
 import { aboutCopy } from "@/copy/about";
 import ModelReportTab from "./ModelReportTab";
@@ -13,6 +12,24 @@ export default function AboutDrawer() {
   const setAboutTab = useAppStore((s) => s.setAboutTab);
   const setToast = useAppStore((s) => s.setToast);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Focus restore and Esc key handler
+  useEffect(() => {
+    if (isAboutOpen) {
+      previousFocusRef.current = document.activeElement as HTMLElement | null;
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setIsAboutOpen(false);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    } else if (previousFocusRef.current) {
+      previousFocusRef.current.focus();
+    }
+  }, [isAboutOpen, setIsAboutOpen]);
 
   if (!isAboutOpen) return null;
 
@@ -47,9 +64,16 @@ export default function AboutDrawer() {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/80 backdrop-blur-md">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="About CineMatch"
+      className="fixed inset-0 flex justify-end bg-black/80 backdrop-blur-md transition-opacity duration-300"
+      style={{ zIndex: 60 }}
+      onClick={() => setIsAboutOpen(false)}
+    >
       <div
-        className="relative w-full max-w-2xl h-full bg-[#121316] border-l border-zinc-800 shadow-2xl flex flex-col overflow-hidden"
+        className="relative w-full max-w-2xl h-full bg-[#121316] border-l border-zinc-800 shadow-2xl flex flex-col overflow-hidden transition-transform duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -90,7 +114,7 @@ export default function AboutDrawer() {
         </div>
 
         {/* Tab Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6" data-lenis-prevent="true">
           {/* TAB 1: How to use */}
           {aboutTab === "howToUse" && (
             <div className="space-y-6 text-zinc-300">

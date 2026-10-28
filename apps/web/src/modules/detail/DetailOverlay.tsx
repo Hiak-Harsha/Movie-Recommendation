@@ -1,6 +1,6 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
-import { X, Star, Bookmark, Clock } from "lucide-react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { X, Star, Bookmark, Clock, RefreshCw } from "lucide-react";
 import { useAppStore } from "../../core/store";
 import { api } from "../../core/client";
 import { ProceduralPoster } from "../../core/motion/ProceduralPoster";
@@ -16,23 +16,35 @@ export const DetailOverlay: React.FC = () => {
   const [detail, setDetail] = useState<MovieDetailResponse | null>(null);
   const [userRating, setUserRating] = useState<number | null>(null);
   const [inWatchlist, setInWatchlist] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const loading = Boolean(selectedMovieId && detail?.movie?.movieId !== selectedMovieId);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  // Close on Esc
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setSelectedMovieId(null);
-      }
-    },
-    [setSelectedMovieId]
-  );
+  const loading = Boolean(selectedMovieId && detail?.movie?.movieId !== selectedMovieId && !error);
+
+  // Close on Esc and restore focus
+  const handleClose = useCallback(() => {
+    setSelectedMovieId(null);
+    setDetail(null);
+    setError(null);
+    if (previousFocusRef.current) {
+      previousFocusRef.current.focus();
+    }
+  }, [setSelectedMovieId]);
 
   useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+    if (selectedMovieId) {
+      previousFocusRef.current = document.activeElement as HTMLElement | null;
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          handleClose();
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [selectedMovieId, handleClose]);
 
   useEffect(() => {
     if (!selectedMovieId) return;
@@ -50,7 +62,8 @@ export const DetailOverlay: React.FC = () => {
         }
       })
       .catch((err) => {
-        console.error(err);
+        console.error("Failed to load movie detail:", err);
+        if (mounted) setError("Could not load movie information.");
       });
 
     // Check rating & watchlist status
@@ -110,31 +123,48 @@ export const DetailOverlay: React.FC = () => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md transition-all"
-      onClick={() => setSelectedMovieId(null)}
+      role="dialog"
+      aria-modal="true"
+      aria-label={movie?.title || "Film details"}
+      className="fixed inset-0 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md transition-opacity duration-200"
+      style={{ zIndex: 60 }}
+      onClick={handleClose}
     >
       <div
-        className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl bg-[#121316] border border-[#26282e] shadow-2xl flex flex-col"
+        className="relative w-full max-w-4xl max-h-[94vh] sm:max-h-[90vh] overflow-y-auto rounded-3xl bg-[#121316] border border-[#26282e] shadow-2xl flex flex-col transition-all duration-200"
+        data-lenis-prevent="true"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           type="button"
-          onClick={() => setSelectedMovieId(null)}
-          className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-black/60 hover:bg-black text-[#9a9aa0] hover:text-[#f2efe6] transition-colors cursor-pointer"
+          onClick={handleClose}
+          className="absolute top-4 right-4 z-30 p-2.5 rounded-full bg-black/60 hover:bg-black text-[#9a9aa0] hover:text-[#f2efe6] transition-colors cursor-pointer"
           aria-label="Close details"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {loading ? (
-          <div className="p-20 text-center font-mono text-xs text-[#9a9aa0]">
-            Loading movie universe...
+        {error ? (
+          <div className="p-16 flex flex-col items-center gap-3 text-center">
+            <p className="text-sm font-mono text-red-400">{error}</p>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 rounded-full bg-[#1c1c21] border border-[#26282e] text-xs font-mono text-[#f2efe6] hover:border-[#f5a524]"
+            >
+              Close
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="p-20 text-center font-mono text-xs text-[#9a9aa0] flex flex-col items-center gap-3">
+            <RefreshCw className="w-6 h-6 animate-spin text-[#f5a524]" />
+            <span>Loading movie universe...</span>
           </div>
         ) : movie ? (
           <>
             {/* Backdrop / Header Banner */}
-            <div className="relative w-full h-64 sm:h-80 overflow-hidden bg-gradient-to-b from-[#1b1c20] to-[#121316]">
+            <div className="relative w-full h-52 sm:h-72 overflow-hidden bg-gradient-to-b from-[#1b1c20] to-[#121316]">
               {media?.backdrop_url ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
@@ -146,14 +176,14 @@ export const DetailOverlay: React.FC = () => {
                 <div className="w-full h-full bg-gradient-to-r from-amber-950/20 via-zinc-900 to-black/60" />
               )}
               {/* Bottom Scrim */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#121316] via-[#121316]/50 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#121316] via-[#121316]/60 to-transparent" />
             </div>
 
             {/* Content Body */}
-            <div className="relative px-6 sm:px-10 pb-10 -mt-32 sm:-mt-40 z-10 flex flex-col gap-8">
-              <div className="flex flex-col sm:flex-row gap-6 items-start">
+            <div className="relative px-5 sm:px-10 pb-8 -mt-24 sm:-mt-36 z-10 flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row gap-5 items-start">
                 {/* 2:3 Poster Frame */}
-                <div className="w-36 sm:w-48 shrink-0 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl border border-[#26282e] bg-[#0b0b0c]">
+                <div className="w-32 sm:w-44 shrink-0 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl border border-[#26282e] bg-[#0b0b0c]">
                   {media?.poster_url ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
@@ -173,8 +203,8 @@ export const DetailOverlay: React.FC = () => {
                 </div>
 
                 {/* Metadata Column */}
-                <div className="flex-1 flex flex-col gap-3 pt-2">
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="flex-1 flex flex-col gap-2.5 pt-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {movie.genres?.map((g: string) => (
                       <span
                         key={g}
@@ -185,11 +215,11 @@ export const DetailOverlay: React.FC = () => {
                     ))}
                   </div>
 
-                  <h1 className="text-2xl sm:text-3xl font-bold text-[#f2efe6] tracking-tight">
+                  <h1 className="text-xl sm:text-3xl font-bold text-[#f2efe6] tracking-tight">
                     {movie.title}
                   </h1>
 
-                  <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-[#9a9aa0]">
+                  <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-[#9a9aa0]">
                     {movie.year && <span>{movie.year}</span>}
                     {media?.runtime && (
                       <span className="flex items-center gap-1">
@@ -203,9 +233,9 @@ export const DetailOverlay: React.FC = () => {
                   </div>
 
                   {/* Star Rating & Watchlist Actions */}
-                  <div className="flex flex-wrap items-center gap-4 pt-3">
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
                     <div className="flex items-center gap-1 bg-[#1b1c20] px-3 py-1.5 rounded-xl border border-[#26282e]">
-                      <span className="text-xs font-mono text-[#9a9aa0] mr-1.5">Your rating:</span>
+                      <span className="text-xs font-mono text-[#9a9aa0] mr-1">Your rating:</span>
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
@@ -243,18 +273,18 @@ export const DetailOverlay: React.FC = () => {
 
               {/* Synopsis / Overview */}
               {media?.overview && (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
                   <h3 className="text-xs font-mono uppercase tracking-wider text-[#f5a524]">
                     Synopsis
                   </h3>
-                  <p className="text-sm text-[#f2efe6]/85 leading-relaxed max-w-3xl">
+                  <p className="text-xs sm:text-sm text-[#f2efe6]/85 leading-relaxed max-w-3xl">
                     {media.overview}
                   </p>
                 </div>
               )}
 
               {/* Cast & Director */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-[#26282e]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-[#26282e]">
                 {media?.director && (
                   <div className="flex flex-col gap-1">
                     <span className="text-xs font-mono uppercase text-[#9a9aa0]">Director</span>
@@ -265,7 +295,7 @@ export const DetailOverlay: React.FC = () => {
                 {media?.cast && media.cast.length > 0 && (
                   <div className="flex flex-col gap-1 sm:col-span-2">
                     <span className="text-xs font-mono uppercase text-[#9a9aa0]">Cast</span>
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <div className="flex flex-wrap gap-1.5 pt-1">
                       {media.cast.slice(0, 6).map((c: { name: string; character?: string }, idx: number) => (
                         <span
                           key={idx}
@@ -284,7 +314,7 @@ export const DetailOverlay: React.FC = () => {
 
               {/* Streaming Providers */}
               {media?.streaming_providers && media.streaming_providers.length > 0 && (
-                <div className="flex flex-col gap-2 pt-4 border-t border-[#26282e]">
+                <div className="flex flex-col gap-2 pt-3 border-t border-[#26282e]">
                   <span className="text-xs font-mono uppercase text-[#9a9aa0]">Where to watch</span>
                   <div className="flex flex-wrap gap-2">
                     {media.streaming_providers.map((p: string, idx: number) => (
@@ -301,7 +331,7 @@ export const DetailOverlay: React.FC = () => {
 
               {/* Trailer Embed */}
               {media?.trailer_key && (
-                <div className="flex flex-col gap-2 pt-4 border-t border-[#26282e]">
+                <div className="flex flex-col gap-2 pt-3 border-t border-[#26282e]">
                   <span className="text-xs font-mono uppercase text-[#9a9aa0]">Official Trailer</span>
                   <div className="aspect-video w-full max-w-2xl rounded-2xl overflow-hidden border border-[#26282e]">
                     <iframe

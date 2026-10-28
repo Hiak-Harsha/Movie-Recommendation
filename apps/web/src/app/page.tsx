@@ -1,14 +1,15 @@
 "use client";
 import React, { useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Film, Search, Sparkles, Info, EyeOff, RotateCcw } from "lucide-react";
+import { Film, Search, Info, EyeOff } from "lucide-react";
 import { useAppStore } from "@/core/store";
 import { api } from "@/core/client";
 import { surfaceCopy } from "@/copy/en";
-import { LenisProvider } from "@/core/motion/LenisProvider";
+import { LenisProvider, scrollToScene } from "@/core/motion/LenisProvider";
 import { Story } from "@/stage";
 import { SearchPanel } from "@/modules/search";
 import { DetailOverlay } from "@/modules/detail";
+import { Toast } from "@/core/Toast";
 import { useOverlapDebugger } from "@/core/motion/overlapDebug";
 
 // Code-split About Drawer so zero technical copy or code is in first-load JS bundle
@@ -24,19 +25,6 @@ export default function HomePage() {
   const setSession = useAppStore((s) => s.setSession);
   const reducedMotion = useAppStore((s) => s.reducedMotion);
   const setReducedMotion = useAppStore((s) => s.setReducedMotion);
-
-  // Undo Toast state
-  const toast = useAppStore((s) => s.toast);
-  const setToast = useAppStore((s) => s.setToast);
-
-  // Auto-dismiss toast after 5 seconds
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => {
-      setToast(null);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [toast, setToast]);
 
   // Initialize server-issued session via /api/me
   useEffect(() => {
@@ -57,7 +45,7 @@ export default function HomePage() {
   // Global Keyboard Shortcuts (/ for search, ? for about, Esc for close)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if user is typing in an input
+      // Don't intercept if user is typing in an input or textarea
       if (
         document.activeElement?.tagName === "INPUT" ||
         document.activeElement?.tagName === "TEXTAREA"
@@ -85,8 +73,7 @@ export default function HomePage() {
   };
 
   const jumpToPicks = () => {
-    const el = document.querySelector("#taste");
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    scrollToScene("#taste");
   };
 
   return (
@@ -100,8 +87,16 @@ export default function HomePage() {
           Skip to main cinema showcase
         </a>
 
-        {/* Minimalist Floating Header */}
-        <header className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-6 py-4 pointer-events-none">
+        {/* Minimalist Floating Header with Scrim (z-30) */}
+        <header
+          className="fixed top-0 left-0 right-0 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 pointer-events-none transition-all"
+          style={{
+            zIndex: 30,
+            background: "linear-gradient(180deg, rgba(11, 11, 12, 0.95) 0%, rgba(11, 11, 12, 0.75) 60%, transparent 100%)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+          }}
+        >
           {/* Logo */}
           <div className="pointer-events-auto flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-[#f5a524] flex items-center justify-center shadow-lg shadow-amber-500/20">
@@ -113,11 +108,11 @@ export default function HomePage() {
           </div>
 
           {/* Header Controls */}
-          <nav aria-label="Main Navigation" className="pointer-events-auto flex items-center gap-3">
+          <nav aria-label="Main Navigation" className="pointer-events-auto flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={jumpToPicks}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono text-[#9a9aa0] hover:text-[#f2efe6] hover:bg-[#121316] border border-transparent hover:border-[#26282e] transition-all cursor-pointer"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono text-[#9a9aa0] hover:text-[#f2efe6] hover:bg-[#121316] border border-transparent hover:border-[#26282e] transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-[#f5a524]"
             >
               <span>{surfaceCopy.nav.startPicking}</span>
             </button>
@@ -125,7 +120,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono text-[#9a9aa0] hover:text-[#f2efe6] hover:bg-[#121316] border border-transparent hover:border-[#26282e] transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono text-[#9a9aa0] hover:text-[#f2efe6] hover:bg-[#121316] border border-transparent hover:border-[#26282e] transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-[#f5a524]"
               aria-label="Search films (Press /)"
             >
               <Search className="w-3.5 h-3.5 text-[#f5a524]" />
@@ -135,18 +130,18 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => openAbout("howToUse")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono text-[#9a9aa0] hover:text-[#f2efe6] hover:bg-[#121316] border border-transparent hover:border-[#26282e] transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono text-[#9a9aa0] hover:text-[#f2efe6] hover:bg-[#121316] border border-transparent hover:border-[#26282e] transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-[#f5a524]"
               aria-label="Open About and Methodology (Press ?)"
             >
               <Info className="w-3.5 h-3.5 text-[#f5a524]" />
-              <span>{surfaceCopy.nav.about}</span>
+              <span className="hidden sm:inline">{surfaceCopy.nav.about}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setReducedMotion(!reducedMotion)}
               title={reducedMotion ? "Enable animations" : "Reduce motion"}
-              className={`p-1.5 rounded-full border transition-colors cursor-pointer ${
+              className={`p-1.5 rounded-full border transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#f5a524] ${
                 reducedMotion
                   ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
                   : "bg-transparent border-transparent text-[#9a9aa0] hover:text-[#f2efe6]"
@@ -163,35 +158,13 @@ export default function HomePage() {
           <Story />
         </main>
 
-        {/* Global Overlays & Modals */}
+        {/* Global Overlays & Modals (Single instances with focus trap and enter/exit motion) */}
         <SearchPanel />
         <DetailOverlay />
         <AboutDrawer />
 
-        {/* Undo Toast Notification (Bottom Center, above dock, z-50) */}
-        {toast && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-full bg-[#121316] border border-[#f5a524]/40 text-[#f2efe6] text-xs font-mono shadow-2xl transition-all duration-200"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#f5a524] shrink-0" />
-            <span>{toast.message}</span>
-            {toast.undoAction && (
-              <button
-                type="button"
-                onClick={() => {
-                  toast.undoAction?.();
-                  setToast(null);
-                }}
-                className="flex items-center gap-1 ml-2 px-2.5 py-0.5 rounded-full bg-[#f5a524] text-black font-bold hover:bg-[#e0941c] transition-colors cursor-pointer"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Undo</span>
-              </button>
-            )}
-          </div>
-        )}
+        {/* Dedicated Toast Notification (z-40, above dock) */}
+        <Toast />
       </div>
     </LenisProvider>
   );
