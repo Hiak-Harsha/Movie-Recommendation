@@ -29,12 +29,16 @@ export default function AboutDrawer() {
         setIsAboutOpen(false);
         window.location.reload();
       }
-    } catch (e: any) {
-      setToast({ message: "Failed to erase data: " + e.message });
+    } catch (e: unknown) {
+      setToast({ message: "Failed to erase data: " + ((e as Error).message || "Unknown error") });
     }
   };
 
-  const tabButtons = [
+  const tabButtons: {
+    id: "howToUse" | "howItWorks" | "dataCredits" | "terms" | "modelReport";
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
     { id: "howToUse", label: aboutCopy.tabs.howToUse, icon: BookOpen },
     { id: "howItWorks", label: aboutCopy.tabs.howItWorks, icon: Cpu },
     { id: "dataCredits", label: aboutCopy.tabs.dataCredits, icon: Award },
@@ -71,7 +75,7 @@ export default function AboutDrawer() {
             return (
               <button
                 key={tb.id}
-                onClick={() => setAboutTab(tb.id as any)}
+                onClick={() => setAboutTab(tb.id)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
                   active
                     ? "bg-amber-500 text-black font-semibold shadow-md"

@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Film, ArrowUp, Heart } from "lucide-react";
+import { Film, ArrowUp } from "lucide-react";
 import { useAppStore } from "../core/store";
 import { surfaceCopy } from "../copy/en";
 
@@ -18,14 +18,14 @@ export const ClosingScene: React.FC<{ progress?: number }> = () => {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col items-center justify-between min-h-[80svh] px-4 py-16 text-center select-none">
+    <div className="w-full max-w-5xl mx-auto flex flex-col items-center justify-between min-h-[80svh] px-4 pt-16 pb-24 text-center select-none">
       {/* Closing Headline */}
       <div className="flex-1 flex flex-col items-center justify-center gap-6 max-w-2xl mx-auto">
         <span className="font-mono text-xs uppercase tracking-widest text-[#f5a524]">
           {surfaceCopy.scenes.s06.eyebrow}
         </span>
 
-        <h2 className="text-3xl sm:text-5xl font-bold text-[#f2efe6] tracking-tight leading-tight">
+        <h2 className="text-fluid-h1 font-display font-bold text-[#f2efe6] tracking-tight leading-tight">
           {surfaceCopy.scenes.s06.heading}
         </h2>
 
@@ -44,7 +44,7 @@ export const ClosingScene: React.FC<{ progress?: number }> = () => {
       </div>
 
       {/* Clean Visitor Footer */}
-      <footer className="w-full pt-12 border-t border-[#26282e]/80 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-[#9a9aa0] font-mono">
+      <footer className="w-full pt-12 pb-8 border-t border-[#26282e]/80 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-[#9a9aa0] font-mono">
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 rounded-md bg-[#f5a524] flex items-center justify-center">
             <Film className="w-3.5 h-3.5 text-black" />

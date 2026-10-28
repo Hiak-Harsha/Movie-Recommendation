@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { useAppStore } from "../store";
 
@@ -9,6 +9,7 @@ interface SplitTextProps {
   as?: "h1" | "h2" | "h3" | "p" | "span" | "div";
   stagger?: number;
   delay?: number;
+  mode?: "chars" | "words";
 }
 
 export const SplitText: React.FC<SplitTextProps> = ({
@@ -17,37 +18,36 @@ export const SplitText: React.FC<SplitTextProps> = ({
   as: Component = "span",
   stagger = 0.035,
   delay = 0,
+  mode = "chars",
 }) => {
-  const containerRef = useRef<HTMLElement>(null);
-  const [isClient, setIsClient] = useState(false);
+  const containerRef = useRef<HTMLElement | null>(null);
   const reducedMotion = useAppStore((s) => s.reducedMotion);
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    if (reducedMotion || !containerRef.current) return;
 
-  useEffect(() => {
-    if (!isClient || reducedMotion || !containerRef.current) return;
+    const ctx = gsap.context(() => {
+      const items = containerRef.current?.querySelectorAll(".split-unit");
+      if (!items || !items.length) return;
 
-    const chars = containerRef.current.querySelectorAll(".split-char");
-    if (!chars.length) return;
+      gsap.fromTo(
+        items,
+        { yPercent: 110, opacity: 0 },
+        {
+          yPercent: 0,
+          opacity: 1,
+          stagger,
+          delay,
+          duration: 0.85,
+          ease: "power3.out",
+        }
+      );
+    }, containerRef);
 
-    gsap.fromTo(
-      chars,
-      { yPercent: 110, opacity: 0 },
-      {
-        yPercent: 0,
-        opacity: 1,
-        stagger,
-        delay,
-        duration: 0.85,
-        ease: "power3.out",
-      }
-    );
-  }, [isClient, reducedMotion, text, stagger, delay]);
+    return () => ctx.revert();
+  }, [reducedMotion, text, stagger, delay, mode]);
 
-  // Server render / Reduced motion fallback: plain text inside semantic element
-  if (!isClient || reducedMotion) {
+  if (reducedMotion) {
     return <Component className={className}>{text}</Component>;
   }
 
@@ -55,23 +55,35 @@ export const SplitText: React.FC<SplitTextProps> = ({
 
   return (
     <Component
-      ref={containerRef as any}
+      ref={(el: HTMLElement | null) => {
+        containerRef.current = el;
+      }}
       aria-label={text}
       className={`inline-block ${className}`}
     >
-      {words.map((word, wIdx) => (
-        <span key={wIdx} className="inline-block whitespace-nowrap overflow-hidden mr-[0.25em]">
-          {word.split("").map((char, cIdx) => (
-            <span
-              key={cIdx}
-              aria-hidden="true"
-              className="split-char inline-block will-change-transform"
-            >
-              {char}
+      {mode === "chars" ? (
+        words.map((word, wIdx) => (
+          <span key={wIdx} className="inline-block whitespace-nowrap overflow-hidden mr-[0.25em]" aria-hidden="true">
+            {word.split("").map((char, cIdx) => (
+              <span
+                key={cIdx}
+                className="split-unit inline-block will-change-transform"
+              >
+                {char}
+              </span>
+            ))}
+          </span>
+        ))
+      ) : (
+        words.map((word, wIdx) => (
+          <span key={wIdx} className="inline-block whitespace-nowrap overflow-hidden mr-[0.25em]" aria-hidden="true">
+            <span className="split-unit inline-block will-change-transform">
+              {word}
             </span>
-          ))}
-        </span>
-      ))}
+          </span>
+        ))
+      )}
     </Component>
   );
 };
+

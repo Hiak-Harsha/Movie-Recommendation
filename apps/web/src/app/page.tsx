@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Film, Search, Sparkles, SlidersHorizontal, Info, EyeOff, RotateCcw } from "lucide-react";
+import { Film, Search, Sparkles, Info, EyeOff, RotateCcw } from "lucide-react";
 import { useAppStore } from "@/core/store";
 import { api } from "@/core/client";
 import { surfaceCopy } from "@/copy/en";

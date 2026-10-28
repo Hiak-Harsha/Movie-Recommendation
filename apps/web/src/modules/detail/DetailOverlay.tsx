@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
-import { X, Star, Bookmark, Film, Play, Clock, Sparkles } from "lucide-react";
+import { X, Star, Bookmark, Clock } from "lucide-react";
 import { useAppStore } from "../../core/store";
 import { api } from "../../core/client";
 import { ProceduralPoster } from "../../core/motion/ProceduralPoster";
@@ -14,9 +14,10 @@ export const DetailOverlay: React.FC = () => {
   const setToast = useAppStore((s) => s.setToast);
 
   const [detail, setDetail] = useState<MovieDetailResponse | null>(null);
-  const [loading, setLoading] = useState(false);
   const [userRating, setUserRating] = useState<number | null>(null);
   const [inWatchlist, setInWatchlist] = useState(false);
+
+  const loading = Boolean(selectedMovieId && detail?.movie?.movieId !== selectedMovieId);
 
   // Close on Esc
   const handleKeyDown = useCallback(
@@ -34,36 +35,41 @@ export const DetailOverlay: React.FC = () => {
   }, [handleKeyDown]);
 
   useEffect(() => {
-    if (!selectedMovieId) {
-      setDetail(null);
-      return;
-    }
+    if (!selectedMovieId) return;
 
-    setLoading(true);
-    // Fetch from /api/movies/{id}
+    let mounted = true;
+
     fetch(`/api/movies/${selectedMovieId}`)
       .then((res) => {
         if (!res.ok) throw new Error("Movie not found");
         return res.json() as Promise<MovieDetailResponse>;
       })
       .then((data) => {
-        setDetail(data);
-        setLoading(false);
+        if (mounted) {
+          setDetail(data);
+        }
       })
       .catch((err) => {
         console.error(err);
-        setLoading(false);
       });
 
     // Check rating & watchlist status
     api.getMyWatchlist().then((items) => {
-      setInWatchlist(items.some((i) => i.movieId === selectedMovieId));
+      if (mounted) {
+        setInWatchlist(items.some((i) => i.movieId === selectedMovieId));
+      }
     });
 
     api.getMyRatings().then((ratings) => {
-      const match = ratings.find((r) => r.movieId === selectedMovieId);
-      setUserRating(match ? match.rating : null);
+      if (mounted) {
+        const match = ratings.find((r) => r.movieId === selectedMovieId);
+        setUserRating(match ? match.rating : null);
+      }
     });
+
+    return () => {
+      mounted = false;
+    };
   }, [selectedMovieId]);
 
   if (!selectedMovieId) return null;
@@ -78,8 +84,8 @@ export const DetailOverlay: React.FC = () => {
       setUserRating(star);
       incrementPicks();
       setToast({ message: `Rated "${movie.title}" ${star}★` });
-    } catch (e: any) {
-      setToast({ message: e.message || "Failed to submit rating" });
+    } catch (e: unknown) {
+      setToast({ message: (e as Error).message || "Failed to submit rating" });
     }
   };
 
@@ -97,8 +103,8 @@ export const DetailOverlay: React.FC = () => {
         updateLibraryCount(1);
         setToast({ message: `Saved "${movie.title}" to your cinema lineup` });
       }
-    } catch (e: any) {
-      setToast({ message: e.message || "Watchlist update failed" });
+    } catch (e: unknown) {
+      setToast({ message: (e as Error).message || "Watchlist update failed" });
     }
   };
 
@@ -260,7 +266,7 @@ export const DetailOverlay: React.FC = () => {
                   <div className="flex flex-col gap-1 sm:col-span-2">
                     <span className="text-xs font-mono uppercase text-[#9a9aa0]">Cast</span>
                     <div className="flex flex-wrap gap-2 pt-1">
-                      {media.cast.slice(0, 6).map((c: any, idx: number) => (
+                      {media.cast.slice(0, 6).map((c: { name: string; character?: string }, idx: number) => (
                         <span
                           key={idx}
                           className="px-2.5 py-1 rounded-lg text-xs bg-[#1b1c20] border border-[#26282e] text-[#f2efe6]"

@@ -14,15 +14,13 @@ export const CountUp: React.FC<CountUpProps> = ({
   duration = 0.8,
   className = "font-mono tabular-nums",
 }) => {
-  const [current, setCurrent] = useState(0);
   const reducedMotion = useAppStore((s) => s.reducedMotion);
-  const prevTo = useRef(0);
+  const [current, setCurrent] = useState(to);
+  const prevTo = useRef(to);
 
   useEffect(() => {
-    if (reducedMotion) {
-      setCurrent(to);
-      return;
-    }
+    if (reducedMotion) return;
+    if (prevTo.current === to) return;
 
     const controls = animate(prevTo.current, to, {
       duration,
@@ -35,5 +33,5 @@ export const CountUp: React.FC<CountUpProps> = ({
     return () => controls.stop();
   }, [to, duration, reducedMotion]);
 
-  return <span className={className}>{current}</span>;
+  return <span className={className}>{reducedMotion ? to : current}</span>;
 };

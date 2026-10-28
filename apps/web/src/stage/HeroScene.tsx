@@ -1,6 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { ArrowDown, Sparkles, Search, Play, ArrowRight } from "lucide-react";
+import React from "react";
+import { ArrowDown, Sparkles, Search, ArrowRight } from "lucide-react";
 import { useAppStore } from "../core/store";
 import { surfaceCopy } from "../copy/en";
 import { SplitText } from "../core/motion/SplitText";
@@ -43,22 +43,22 @@ export const HeroScene: React.FC<{ progress?: number }> = ({ progress = 0 }) => 
       {/* Hero Content Container */}
       <div className="relative z-10 flex flex-col items-center gap-6 max-w-4xl mx-auto py-12">
         {/* Eyebrow */}
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#121316]/80 border border-[#26282e] text-xs font-mono text-[#f5a524]">
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#121316]/90 border border-[#26282e] text-xs font-mono text-[#f5a524] shadow-md">
           <Sparkles className="w-3.5 h-3.5" />
           <span>{surfaceCopy.scenes.s00.eyebrow}</span>
         </div>
 
-        {/* Wordmark */}
-        <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter text-[#f2efe6] uppercase drop-shadow-2xl">
-          <SplitText text="CINEMATCH" />
+        {/* Cinematic Animated Wordmark */}
+        <h1 className="font-display text-fluid-wordmark text-[#f2efe6] uppercase tracking-wider drop-shadow-2xl">
+          <SplitText text="CINEMATCH" mode="chars" stagger={0.04} />
         </h1>
 
-        {/* Warm Plain Tagline & Subtitle */}
-        <div className="flex flex-col gap-2 max-w-2xl mx-auto">
-          <p className="text-lg sm:text-2xl font-bold text-[#f2efe6] tracking-tight">
+        {/* Headline & Subtitle */}
+        <div className="flex flex-col gap-3 max-w-2xl mx-auto">
+          <p className="font-display text-fluid-h2 font-bold text-[#f2efe6] tracking-tight">
             {surfaceCopy.brand.tagline}
           </p>
-          <p className="text-sm sm:text-base text-[#9a9aa0]">
+          <p className="text-sm sm:text-base text-[#9a9aa0] max-w-xl mx-auto text-fluid-body">
             {surfaceCopy.brand.subtitle}
           </p>
         </div>
@@ -69,7 +69,7 @@ export const HeroScene: React.FC<{ progress?: number }> = ({ progress = 0 }) => 
             <button
               type="button"
               onClick={jumpToForYou}
-              className="flex items-center gap-2 px-6 py-3 rounded-full text-xs font-mono uppercase bg-[#f5a524] text-black font-bold hover:bg-[#e0941c] transition-all shadow-xl shadow-amber-500/20 cursor-pointer"
+              className="flex items-center gap-2 px-6 py-3 rounded-full text-xs font-mono uppercase bg-[#f5a524] text-black font-bold hover:bg-[#e0941c] transition-all shadow-xl shadow-amber-500/20 hover:scale-[1.02] cursor-pointer"
             >
               <span>Continue to picks ({picksCount})</span>
               <ArrowRight className="w-4 h-4" />
@@ -78,7 +78,7 @@ export const HeroScene: React.FC<{ progress?: number }> = ({ progress = 0 }) => 
             <button
               type="button"
               onClick={jumpToTaste}
-              className="flex items-center gap-2 px-6 py-3 rounded-full text-xs font-mono uppercase bg-[#f5a524] text-black font-bold hover:bg-[#e0941c] transition-all shadow-xl shadow-amber-500/20 cursor-pointer"
+              className="flex items-center gap-2 px-6 py-3 rounded-full text-xs font-mono uppercase bg-[#f5a524] text-black font-bold hover:bg-[#e0941c] transition-all shadow-xl shadow-amber-500/20 hover:scale-[1.02] cursor-pointer"
             >
               <span>{surfaceCopy.nav.startPicking}</span>
               <ArrowDown className="w-4 h-4" />
@@ -88,7 +88,7 @@ export const HeroScene: React.FC<{ progress?: number }> = ({ progress = 0 }) => 
           <button
             type="button"
             onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-2 px-6 py-3 rounded-full text-xs font-mono uppercase bg-[#121316]/90 hover:bg-[#1b1c20] text-[#f2efe6] border border-[#26282e] hover:border-[#f5a524]/40 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-6 py-3 rounded-full text-xs font-mono uppercase bg-[#121316]/90 hover:bg-[#1c1c21] text-[#f2efe6] border border-[#26282e] hover:border-[#f5a524]/50 transition-all hover:scale-[1.02] cursor-pointer shadow-lg"
           >
             <Search className="w-4 h-4 text-[#f5a524]" />
             <span>{surfaceCopy.nav.searchFilms}</span>

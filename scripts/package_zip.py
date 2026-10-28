@@ -3,8 +3,9 @@ import zipfile
 import datetime
 
 def make_clean_zip():
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    project_zip = os.path.join(root_dir, "CineMatch_Project.zip")
     desktop_zip = r"C:\Users\madha\Desktop\CineMatch_Project.zip"
-    root_dir = r"C:\Users\madha\Desktop\Movie Recommendation"
     
     exclude_dirs = {
         '.git',
@@ -16,15 +17,15 @@ def make_clean_zip():
         'venv'
     }
     
-    if os.path.exists(desktop_zip):
+    if os.path.exists(project_zip):
         try:
-            os.remove(desktop_zip)
-            print(f"Removed previous zip: {desktop_zip}")
+            os.remove(project_zip)
+            print(f"Removed previous zip: {project_zip}")
         except Exception as e:
             print(f"Warning removing previous zip: {e}")
             
     file_count = 0
-    with zipfile.ZipFile(desktop_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
+    with zipfile.ZipFile(project_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for dirpath, dirnames, filenames in os.walk(root_dir):
             dirnames[:] = [d for d in dirnames if d not in exclude_dirs]
             for f in filenames:
@@ -35,14 +36,19 @@ def make_clean_zip():
                 zipf.write(full_path, arcname)
                 file_count += 1
                 
-    project_zip = os.path.join(root_dir, "CineMatch_Project.zip")
     import shutil
-    shutil.copy2(desktop_zip, project_zip)
+    try:
+        shutil.copy2(project_zip, desktop_zip)
+        has_desktop = True
+    except Exception as e:
+        print(f"Note: Could not copy to desktop ({e})")
+        has_desktop = False
     
     size_mb = os.path.getsize(project_zip) / (1024 * 1024)
     print(f"Successfully created:")
     print(f"  1. Inside project folder: {project_zip}")
-    print(f"  2. On Desktop:           {desktop_zip}")
+    if has_desktop:
+        print(f"  2. On Desktop:           {desktop_zip}")
     print(f"Total files: {file_count}")
     print(f"Archive size: {size_mb:.2f} MB")
     
@@ -73,7 +79,7 @@ def make_clean_zip():
         'docker-compose.yml',
     ]
     
-    with zipfile.ZipFile(desktop_zip, 'r') as verify_zip:
+    with zipfile.ZipFile(project_zip, 'r') as verify_zip:
         names = set(verify_zip.namelist())
         print("\nVerifying Critical Files:")
         all_present = True

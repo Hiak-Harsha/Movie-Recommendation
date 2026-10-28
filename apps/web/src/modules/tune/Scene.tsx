@@ -64,7 +64,7 @@ export const TuneScene: React.FC<{ progress?: number }> = () => {
           <span className="font-mono text-xs uppercase tracking-widest text-[#f5a524]">
             04/ Tune
           </span>
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#f2efe6] tracking-tight">
+          <h2 className="text-fluid-h2 font-display font-bold text-[#f2efe6] tracking-tight">
             Fine-tune your recommendations
           </h2>
           <p className="text-xs sm:text-sm text-[#9a9aa0]">
@@ -242,11 +242,23 @@ export const TuneScene: React.FC<{ progress?: number }> = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {movies.map((m) => (
-              <MoviePosterCard key={m.movieId} movie={m} />
-            ))}
-          </div>
+          {loading && movies.length === 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="flex flex-col gap-2">
+                  <div className="w-full aspect-[2/3] rounded-lg bg-[#1c1c21] border border-[#26282e] animate-pulse" />
+                  <div className="w-3/4 h-3 rounded bg-[#1c1c21] animate-pulse" />
+                  <div className="w-1/2 h-2.5 rounded bg-[#1c1c21] animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {movies.map((m) => (
+                <MoviePosterCard key={m.movieId} movie={m} />
+              ))}
+            </div>
+          )}
 
           {movies.length === 0 && !loading && (
             <div className="p-12 text-center rounded-2xl bg-[#121316] border border-[#26282e] text-[#9a9aa0]">

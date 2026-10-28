@@ -16,20 +16,23 @@ export const SearchPanel: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const handleClose = () => {
+    setIsSearchOpen(false);
+    setQuery("");
+    setResults([]);
+  };
+
   // Focus input automatically on open
   useEffect(() => {
     if (isSearchOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    } else {
-      setQuery("");
-      setResults([]);
+      const timer = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
     }
   }, [isSearchOpen]);
 
   // Debounced search query
   useEffect(() => {
     if (!query.trim()) {
-      setResults([]);
       return;
     }
 
@@ -52,7 +55,7 @@ export const SearchPanel: React.FC = () => {
   // Keyboard navigation: Escape closes, Arrows navigate, Enter selects
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
-      setIsSearchOpen(false);
+      handleClose();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       setSelectedIndex((prev) => (prev + 1) % Math.max(1, results.length));
@@ -62,7 +65,7 @@ export const SearchPanel: React.FC = () => {
     } else if (e.key === "Enter" && results[selectedIndex]) {
       e.preventDefault();
       const chosen = results[selectedIndex];
-      setIsSearchOpen(false);
+      handleClose();
       setSelectedMovieId(chosen.movieId);
     }
   };
@@ -75,7 +78,7 @@ export const SearchPanel: React.FC = () => {
       aria-modal="true"
       aria-label="Search movies"
       className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-[#0b0b0c]/80 backdrop-blur-md"
-      onClick={() => setIsSearchOpen(false)}
+      onClick={handleClose}
       onKeyDown={handleKeyDown}
     >
       <div
@@ -89,7 +92,11 @@ export const SearchPanel: React.FC = () => {
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setQuery(val);
+              if (!val.trim()) setResults([]);
+            }}
             placeholder="Search films by title..."
             className="flex-1 bg-transparent text-sm sm:text-base text-[#f2efe6] placeholder-[#9a9aa0] focus:outline-none"
             aria-autocomplete="list"
@@ -97,7 +104,10 @@ export const SearchPanel: React.FC = () => {
           {query && (
             <button
               type="button"
-              onClick={() => setQuery("")}
+              onClick={() => {
+                setQuery("");
+                setResults([]);
+              }}
               className="p-1 rounded text-[#9a9aa0] hover:text-[#f2efe6]"
               aria-label="Clear search input"
             >
@@ -123,15 +133,14 @@ export const SearchPanel: React.FC = () => {
           {!loading && results.map((item, idx) => {
             const isSelected = idx === selectedIndex;
             return (
-              <div
+              <button
                 key={item.movieId}
-                role="button"
-                tabIndex={0}
+                type="button"
                 onClick={() => {
-                  setIsSearchOpen(false);
+                  handleClose();
                   setSelectedMovieId(item.movieId);
                 }}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors ${
                   isSelected
                     ? "bg-[#26282e] text-[#f5a524]"
                     : "text-[#f2efe6] hover:bg-[#26282e]/50"
@@ -152,7 +161,7 @@ export const SearchPanel: React.FC = () => {
                     {item.vote_average.toFixed(1)}
                   </span>
                 ) : null}
-              </div>
+              </button>
             );
           })}
         </div>

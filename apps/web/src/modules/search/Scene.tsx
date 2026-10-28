@@ -23,7 +23,6 @@ export const SearchScene: React.FC<{ progress?: number }> = () => {
   useEffect(() => {
     const target = SAMPLE_TITLES[titleIdx % SAMPLE_TITLES.length];
     let charIdx = 0;
-    setTypedTitle("");
 
     const interval = setInterval(() => {
       charIdx++;
@@ -49,7 +48,7 @@ export const SearchScene: React.FC<{ progress?: number }> = () => {
           <span className="font-mono text-xs uppercase tracking-widest text-[#f5a524]">
             01/ Search
           </span>
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#f2efe6] tracking-tight">
+          <h2 className="text-fluid-h2 font-display font-bold text-[#f2efe6] tracking-tight">
             Looking for something specific?
           </h2>
           <p className="text-sm text-[#9a9aa0] max-w-md mx-auto">
@@ -67,7 +66,7 @@ export const SearchScene: React.FC<{ progress?: number }> = () => {
           <div className="flex items-center gap-3">
             <Search className="w-5 h-5 text-[#f5a524] group-hover:scale-110 transition-transform" />
             <span className="text-sm sm:text-base text-[#9a9aa0] font-medium">
-              Try searching <span className="text-[#f2efe6] font-semibold">"{typedTitle}"</span>
+              Try searching <span className="text-[#f2efe6] font-semibold">&ldquo;{typedTitle}&rdquo;</span>
               <span className="inline-block w-1.5 h-4 ml-0.5 bg-[#f5a524] animate-pulse align-middle" />
             </span>
           </div>

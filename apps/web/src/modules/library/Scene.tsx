@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Bookmark, Film, Trash2, CheckCircle2, Download, Ticket, ArrowRight } from "lucide-react";
+import { Bookmark, Trash2, CheckCircle2, Download, Ticket, ArrowRight } from "lucide-react";
 import { useAppStore } from "../../core/store";
 import { api } from "../../core/client";
 import { ProceduralPoster } from "../../core/motion/ProceduralPoster";
@@ -88,7 +88,7 @@ export const LibraryScene: React.FC<{ progress?: number }> = () => {
           <span className="font-mono text-xs uppercase tracking-widest text-[#f5a524]">
             05/ Library
           </span>
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#f2efe6] tracking-tight">
+          <h2 className="text-fluid-h2 font-display font-bold text-[#f2efe6] tracking-tight">
             Tonight&apos;s Cinema Lineup
           </h2>
           <p className="text-xs sm:text-sm text-[#9a9aa0]">

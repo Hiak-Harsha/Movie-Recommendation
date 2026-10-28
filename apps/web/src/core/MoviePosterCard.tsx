@@ -26,7 +26,6 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [activeRating, setActiveRating] = useState<number | null>(null);
-  const [isRatingOpen, setIsRatingOpen] = useState(false);
 
   const setSelectedMovieId = useAppStore((s) => s.setSelectedMovieId);
   const updateLibraryCount = useAppStore((s) => s.updateLibraryCount);
@@ -78,7 +77,6 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
   const handleRate = async (stars: number, e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveRating(stars);
-    setIsRatingOpen(false);
     incrementPicks();
     try {
       await api.submitMyRating(movie.movieId, stars);
@@ -100,17 +98,10 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
     <div className={`group flex flex-col w-full max-w-[220px] select-none ${className}`}>
       {/* 2:3 Portrait Poster Box with Scrim and Badge */}
       <TiltCard className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-[#121316] border border-[#26282e] shadow-md group-hover:border-[#f5a524]/60 transition-colors">
-        <div
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           onClick={handleCardClick}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleCardClick();
-            }
-          }}
-          className="w-full h-full cursor-pointer relative block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f5a524]"
+          className="w-full h-full cursor-pointer relative block text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#f5a524]"
           aria-label={`View details for ${movie.display_title || movie.title}`}
         >
           {posterUrl && !imageError ? (
@@ -143,10 +134,17 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
           )}
 
           {/* Quick Save Pill on Poster */}
-          <button
-            type="button"
+          <span
+            role="button"
+            tabIndex={0}
             onClick={handleSaveToggle}
-            className={`absolute top-2 right-2 z-10 p-1.5 rounded-full backdrop-blur-md transition-all ${
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleSaveToggle(e as unknown as React.MouseEvent);
+              }
+            }}
+            className={`absolute top-2 right-2 z-10 p-1.5 rounded-full backdrop-blur-md transition-all cursor-pointer ${
               isSaved
                 ? "bg-[#f5a524] text-[#0b0b0c]"
                 : "bg-[#0b0b0c]/70 text-[#f2efe6] hover:bg-[#f5a524] hover:text-[#0b0b0c] opacity-80 group-hover:opacity-100"
@@ -154,8 +152,8 @@ export const MoviePosterCard: React.FC<MoviePosterCardProps> = ({
             aria-label={isSaved ? "Remove from watchlist" : "Save to watchlist"}
           >
             {isSaved ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : <Bookmark className="w-3.5 h-3.5" />}
-          </button>
-        </div>
+          </span>
+        </button>
       </TiltCard>
 
       {/* Reserved Typography & Metadata Area (Below poster, never overlapping) */}

@@ -78,13 +78,13 @@ export const Stage: React.FC = () => {
       <SceneRail />
 
       {/* Center Stage Workspace Slots (All mounted to preserve state, inert when inactive) */}
-      <div className="relative z-10 w-full h-full flex items-center justify-center overflow-y-auto px-4 pb-20 pt-6">
+      <div className="stage-slot-container relative z-10 w-full h-full">
         {/* Scene 00: Hero Showcase */}
         <div
-          className={`w-full transition-opacity duration-500 ${
+          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
             activeSceneIndex === 0
-              ? "opacity-100 visible"
-              : "opacity-0 invisible pointer-events-none absolute"
+              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
+              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
           }`}
           aria-hidden={activeSceneIndex !== 0}
           inert={activeSceneIndex !== 0}
@@ -94,10 +94,10 @@ export const Stage: React.FC = () => {
 
         {/* Scene 01: Search */}
         <div
-          className={`w-full transition-opacity duration-500 ${
+          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
             activeSceneIndex === 1
-              ? "opacity-100 visible"
-              : "opacity-0 invisible pointer-events-none absolute"
+              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
+              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
           }`}
           aria-hidden={activeSceneIndex !== 1}
           inert={activeSceneIndex !== 1}
@@ -107,10 +107,10 @@ export const Stage: React.FC = () => {
 
         {/* Scene 02: Taste Grid */}
         <div
-          className={`w-full transition-opacity duration-500 ${
+          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
             activeSceneIndex === 2
-              ? "opacity-100 visible"
-              : "opacity-0 invisible pointer-events-none absolute"
+              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
+              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
           }`}
           aria-hidden={activeSceneIndex !== 2}
           inert={activeSceneIndex !== 2}
@@ -120,10 +120,10 @@ export const Stage: React.FC = () => {
 
         {/* Scene 03: For You Curated Shelves */}
         <div
-          className={`w-full transition-opacity duration-500 ${
+          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
             activeSceneIndex === 3
-              ? "opacity-100 visible"
-              : "opacity-0 invisible pointer-events-none absolute"
+              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
+              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
           }`}
           aria-hidden={activeSceneIndex !== 3}
           inert={activeSceneIndex !== 3}
@@ -133,10 +133,10 @@ export const Stage: React.FC = () => {
 
         {/* Scene 04: Tune Faders */}
         <div
-          className={`w-full transition-opacity duration-500 ${
+          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
             activeSceneIndex === 4
-              ? "opacity-100 visible"
-              : "opacity-0 invisible pointer-events-none absolute"
+              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
+              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
           }`}
           aria-hidden={activeSceneIndex !== 4}
           inert={activeSceneIndex !== 4}
@@ -146,10 +146,10 @@ export const Stage: React.FC = () => {
 
         {/* Scene 05: Library Tickets */}
         <div
-          className={`w-full transition-opacity duration-500 ${
+          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
             activeSceneIndex === 5
-              ? "opacity-100 visible"
-              : "opacity-0 invisible pointer-events-none absolute"
+              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
+              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
           }`}
           aria-hidden={activeSceneIndex !== 5}
           inert={activeSceneIndex !== 5}
@@ -159,10 +159,10 @@ export const Stage: React.FC = () => {
 
         {/* Scene 06: Closing & Credits */}
         <div
-          className={`w-full transition-opacity duration-500 ${
+          className={`w-full max-w-7xl mx-auto transition-all duration-500 ease-out ${
             activeSceneIndex === 6
-              ? "opacity-100 visible"
-              : "opacity-0 invisible pointer-events-none absolute"
+              ? "opacity-100 translate-y-0 scale-100 visible relative z-10"
+              : "opacity-0 translate-y-4 scale-[0.98] invisible pointer-events-none absolute inset-x-0"
           }`}
           aria-hidden={activeSceneIndex !== 6}
           inert={activeSceneIndex !== 6}

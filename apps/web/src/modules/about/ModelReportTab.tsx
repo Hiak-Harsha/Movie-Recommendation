@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { aboutCopy } from "@/copy/about";
-import { BarChart2, ShieldCheck, Activity, Database, CheckCircle2 } from "lucide-react";
+import { BarChart2, Activity } from "lucide-react";
 
 interface ModelMetric {
   mean: number;

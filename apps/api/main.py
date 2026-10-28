@@ -457,6 +457,39 @@ def track_feedback(user_id: str, body: FeedbackCreate, db: Session = Depends(get
     return FeedbackResponse(status="recorded", message=f"Recorded '{body.interaction_type}' for movie #{body.movieId}")
 
 
+def _compute_user_recommendations(
+    user_id: str,
+    top_n: int = 20,
+    genres: Optional[str] = None,
+    genre_mode: str = "OR",
+    year_min: Optional[int] = None,
+    year_max: Optional[int] = None,
+    min_support: int = 5,
+    diversity_lambda: float = 0.15,
+    novelty_boost: float = 0.05,
+    recency_prior: float = 0.0,
+    db: Session = None
+) -> RecommendationResponse:
+    """Internal business logic helper for user recommendations with native types."""
+    ratings = db.query(Rating).filter(Rating.user_id == user_id).all() if db else []
+    user_ratings = {r.movie_id: r.rating for r in ratings}
+    genre_list = [g.strip() for g in genres.split(",")] if genres else None
+
+    req = RecommendationRequest(
+        user_ratings=user_ratings,
+        top_n=top_n,
+        genres=genre_list,
+        genre_mode=genre_mode or "OR",
+        year_min=year_min,
+        year_max=year_max,
+        min_support=min_support if min_support is not None else 5,
+        diversity_lambda=diversity_lambda if diversity_lambda is not None else 0.15,
+        novelty_boost=novelty_boost if novelty_boost is not None else 0.05,
+        recency_prior=recency_prior if recency_prior is not None else 0.0
+    )
+    return get_recommendations(req)
+
+
 # Connected Recommendations using persistent ratings
 @app.get("/api/users/{user_id}/recommendations", response_model=RecommendationResponse)
 def get_user_personalized_recommendations(
@@ -473,23 +506,19 @@ def get_user_personalized_recommendations(
     db: Session = Depends(get_db)
 ) -> RecommendationResponse:
     """Personalized recommendations using persistent ratings loaded from SQLite."""
-    ratings = db.query(Rating).filter(Rating.user_id == user_id).all()
-    user_ratings = {r.movie_id: r.rating for r in ratings}
-    genre_list = [g.strip() for g in genres.split(",")] if genres else None
-
-    req = RecommendationRequest(
-        user_ratings=user_ratings,
+    return _compute_user_recommendations(
+        user_id=user_id,
         top_n=top_n,
-        genres=genre_list,
+        genres=genres,
         genre_mode=genre_mode,
         year_min=year_min,
         year_max=year_max,
         min_support=min_support,
         diversity_lambda=diversity_lambda,
         novelty_boost=novelty_boost,
-        recency_prior=recency_prior
+        recency_prior=recency_prior,
+        db=db
     )
-    return get_recommendations(req)
 
 
 # ==========================================
@@ -723,10 +752,31 @@ def get_my_recommendations(
     db: Session = Depends(get_db)
 ) -> RecommendationResponse:
     """Ranked recommendations parameterized for the Tune faders."""
-    return get_user_personalized_recommendations(
+    year_min = None
+    year_max = None
+    if decades:
+        dec = decades.lower().strip()
+        if "2020" in dec:
+            year_min, year_max = 2020, 2030
+        elif "2010" in dec:
+            year_min, year_max = 2010, 2019
+        elif "2000" in dec:
+            year_min, year_max = 2000, 2009
+        elif "1990" in dec:
+            year_min, year_max = 1990, 1999
+        elif "1980" in dec:
+            year_min, year_max = 1980, 1989
+        elif "classic" in dec:
+            year_min, year_max = 1880, 1979
+
+    return _compute_user_recommendations(
         user_id=user.id,
         top_n=top_n,
         genres=genres,
+        genre_mode="OR",
+        year_min=year_min,
+        year_max=year_max,
+        min_support=5,
         diversity_lambda=diversity,
         novelty_boost=novelty,
         recency_prior=recency,

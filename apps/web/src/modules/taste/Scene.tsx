@@ -44,7 +44,7 @@ export const TasteScene: React.FC<{ progress?: number }> = () => {
           <span className="font-mono text-xs uppercase tracking-widest text-[#f5a524]">
             02/ Taste
           </span>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#f2efe6]">
+          <h2 className="text-fluid-h2 font-display font-bold text-[#f2efe6]">
             Pick a few movies you love
           </h2>
           <p className="text-xs sm:text-sm text-[#9a9aa0]">
@@ -65,7 +65,7 @@ export const TasteScene: React.FC<{ progress?: number }> = () => {
             <button
               type="button"
               onClick={jumpToForYou}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#f5a524] text-[#0b0b0c] font-bold text-xs uppercase tracking-wider hover:brightness-110 shadow-lg transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#f5a524] text-[#0b0b0c] font-bold text-xs uppercase tracking-wider hover:brightness-110 shadow-lg shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
             >
               <span>Your picks are ready</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -74,7 +74,7 @@ export const TasteScene: React.FC<{ progress?: number }> = () => {
             <button
               type="button"
               onClick={jumpToForYou}
-              className="text-xs font-mono uppercase tracking-wider text-[#9a9aa0] hover:text-[#f2efe6] transition-colors"
+              className="text-xs font-mono uppercase tracking-wider text-[#9a9aa0] hover:text-[#f2efe6] transition-colors cursor-pointer"
             >
               Skip to popular
             </button>
