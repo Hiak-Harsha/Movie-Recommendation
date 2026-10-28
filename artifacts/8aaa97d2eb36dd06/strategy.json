@@ -1,0 +1,9 @@
+{
+  "selected_model": "CineMatch Hybrid",
+  "is_hybrid_superior": true,
+  "validation_ndcg_hybrid": 0.0947,
+  "best_single_model": "Implicit Co-occurrence",
+  "validation_ndcg_best_single": 0.0891,
+  "candidate_recall_ceiling": 0.341,
+  "rationale": "CineMatch Hybrid achieved validation NDCG@10 of 0.0947, exceeding Implicit Co-occurrence (0.0891)."
+}

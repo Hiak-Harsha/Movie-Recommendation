@@ -10,6 +10,7 @@ WORKDIR /app
 # Copy root workspace and api-client package
 COPY package.json ./
 COPY packages/api-client/ ./packages/api-client/
+RUN cd packages/api-client && (npx -p typescript tsc || true)
 
 # Copy apps/web manifests and install dependencies
 WORKDIR /app/apps/web
