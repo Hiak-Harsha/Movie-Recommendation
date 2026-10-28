@@ -19,5 +19,11 @@ done
 echo "Backend is healthy!"
 
 echo "Starting CineMatch Next.js web application on 0.0.0.0:${PUBLIC_PORT}..."
-cd apps/web
-exec npx next start -H 0.0.0.0 -p "${PUBLIC_PORT}"
+cd /app/apps/web
+if [ -x /app/node_modules/.bin/next ]; then
+  exec /app/node_modules/.bin/next start -H 0.0.0.0 -p "${PUBLIC_PORT}"
+elif command -v next > /dev/null 2>&1; then
+  exec next start -H 0.0.0.0 -p "${PUBLIC_PORT}"
+else
+  exec npx next start -H 0.0.0.0 -p "${PUBLIC_PORT}"
+fi

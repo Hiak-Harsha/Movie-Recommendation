@@ -7,19 +7,15 @@
 FROM node:20-alpine AS web-builder
 WORKDIR /app
 
-# Copy root workspace and api-client package
+# Copy root workspace and packages
 COPY package.json ./
-COPY packages/api-client/ ./packages/api-client/
+COPY packages/ packages/
+COPY apps/web/ apps/web/
+
+RUN npm install --legacy-peer-deps
+
 RUN cd packages/api-client && (npx -p typescript tsc || true)
-
-# Copy apps/web manifests and install dependencies
-WORKDIR /app/apps/web
-COPY apps/web/package.json apps/web/package-lock.json* ./
-RUN npm install
-
-# Copy web source and build production bundle
-COPY apps/web/ ./
-RUN npm run build
+RUN cd apps/web && npm run build
 
 # Stage 2: Unified Python + Node Production Runtime
 FROM python:3.11-slim
@@ -49,11 +45,11 @@ COPY eval_results.json strategy.json ./
 
 # Copy built Next.js artifacts and dependencies from Stage 1
 COPY --from=web-builder /app/package.json ./package.json
-COPY --from=web-builder /app/packages/api-client ./packages/api-client
+COPY --from=web-builder /app/node_modules ./node_modules
 COPY --from=web-builder /app/apps/web/public ./apps/web/public
 COPY --from=web-builder /app/apps/web/.next ./apps/web/.next
-COPY --from=web-builder /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=web-builder /app/apps/web/package.json ./apps/web/package.json
+RUN ln -s /app/node_modules /app/apps/web/node_modules || true
 
 # Copy and prepare startup script
 COPY start.sh .
@@ -63,6 +59,7 @@ RUN chmod +x start.sh && sed -i 's/\r$//' start.sh
 ENV PORT=10000
 ENV NODE_ENV=production
 ENV INTERNAL_API_URL=http://127.0.0.1:8000
+ENV PATH="/app/node_modules/.bin:$PATH"
 EXPOSE 10000
 
 CMD ["./start.sh"]
