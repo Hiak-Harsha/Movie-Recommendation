@@ -27,4 +27,5 @@ _backup/
 *.db
 node_modules/
 .next/
+/public/
 test-results/

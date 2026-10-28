@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web && node scripts/sync_next.js",
     "start": "npm run start --workspace=apps/web"
   }
 }
